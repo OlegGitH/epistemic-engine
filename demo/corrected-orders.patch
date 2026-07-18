@@ -13,7 +13,7 @@ diff --git a/orders/migration.py b/orders/migration.py
 diff --git a/orders/service.py b/orders/service.py
 --- a/orders/service.py
 +++ b/orders/service.py
-@@ -5,5 +5,5 @@
+@@ -5,4 +5,4 @@
 
  def process_order(order_id: str, customer_email: str) -> None:
 -    # Intentional defect: this exposes customer PII to application logs.
