@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/decision-result.schema.json",
+  "type": "object",
+  "required": ["spec_version", "decision_id", "status", "action_allowed", "reasons", "conditions", "evaluated_at"],
+  "properties": {
+    "spec_version": { "const": "0.1" },
+    "decision_id": { "type": "string" },
+    "status": { "enum": ["allow", "block", "indeterminate", "error"] },
+    "action_allowed": { "type": "boolean" },
+    "reasons": { "type": "array", "items": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "subject_id": { "type": "string" } }, "additionalProperties": false } },
+    "conditions": { "type": "array", "items": { "type": "string" } },
+    "evaluated_at": { "type": "string", "format": "date-time" },
+    "context": { "$ref": "event.schema.json#/$defs/context" },
+    "certificate": { "$ref": "certificate.schema.json" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,12 @@
+{
+  "protocol": "0.1",
+  "schemas": "0.1",
+  "go_api": "0.1.0",
+  "typescript_sdk": "0.1.0",
+  "python_sdk": "0.1.0",
+  "cli": "0.1.0",
+  "engine_facade": "0.1.0",
+  "conformance": "0.1.0",
+  "tag": "v0.1.0",
+  "status": "release-candidate"
+}

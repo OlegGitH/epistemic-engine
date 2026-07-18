@@ -1,0 +1,11 @@
+{
+  "spec_version": "0.1",
+  "id": "orphan-event",
+  "type": "evidence.attached",
+  "source": { "name": "conformance" },
+  "subject": { "type": "evidence", "id": "orphan" },
+  "time": "2026-07-16T10:00:01Z",
+  "context": { "decision_id": "parent-decision", "run_id": "parent-run", "parent_id": "missing-event" },
+  "ordering": { "sequence": 2, "partition": "parent-run" },
+  "data": {}
+}

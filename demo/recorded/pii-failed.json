@@ -1,0 +1,8 @@
+{
+  "runner": "recorded-docker-fallback",
+  "image": "python:3.12-alpine",
+  "command": ["python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_pii_logging.py", "-v"],
+  "exit_code": 1,
+  "outcome": "failed",
+  "stderr": "AssertionError: 'alice@example.com' unexpectedly found in captured logs"
+}

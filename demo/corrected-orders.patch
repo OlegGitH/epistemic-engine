@@ -1,0 +1,22 @@
+diff --git a/orders/migration.py b/orders/migration.py
+--- a/orders/migration.py
++++ b/orders/migration.py
+@@ -10,6 +10,8 @@
+ def migrate_status(stored_value: str) -> OrderStatus:
+     """Convert a persisted status after the proposed enum rename.
+
+     Intentional defect: existing rows contain ``processing`` and now fail.
+     """
++    if stored_value == "processing":
++        stored_value = "in_progress"
+     return OrderStatus(stored_value)
+diff --git a/orders/service.py b/orders/service.py
+--- a/orders/service.py
++++ b/orders/service.py
+@@ -5,5 +5,5 @@
+
+ def process_order(order_id: str, customer_email: str) -> None:
+-    # Intentional defect: this exposes customer PII to application logs.
+-    logger.info("processing order=%s customer_email=%s", order_id, customer_email)
++    # Log an opaque order identifier; customer PII must not enter application logs.
++    logger.info("processing order=%s", order_id)

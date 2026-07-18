@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/certificate.schema.json",
+  "type": "object",
+  "required": ["spec_version", "id", "decision_id", "result", "artifact_hashes", "issued_at", "proof"],
+  "properties": {
+    "spec_version": { "const": "0.1" },
+    "id": { "type": "string" },
+    "decision_id": { "type": "string" },
+    "result": true,
+    "artifact_hashes": { "type": "array", "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "supersedes": { "type": "string" },
+    "proof": { "type": "object", "required": ["algorithm", "digest"], "properties": { "algorithm": { "const": "SHA-256" }, "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" } }, "additionalProperties": false }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,16 @@
+api_version: epistemic.dev/relay/v1alpha1
+receivers:
+  http:
+    listen: :8090
+  file:
+    watch: ./artifacts
+processors:
+  redact:
+    keys: token,password,secret,authorization,api_key
+  batch:
+    max_size: 100
+exporters:
+  archive:
+    path: .epistemic/relay.jsonl
+  engine:
+    endpoint: http://localhost:8080

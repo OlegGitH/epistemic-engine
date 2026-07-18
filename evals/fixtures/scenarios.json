@@ -1,0 +1,61 @@
+[
+  {
+    "name": "complete-safe-evidence",
+    "events": [
+      {"type":"build.completed","source":"ci","payload":{"status":"passed"}},
+      {"type":"test.completed","source":"ci","payload":{"suite":"unit","status":"passed"}},
+      {"type":"migration.test","source":"staging","payload":{"suite":"compatibility","status":"passed"}},
+      {"type":"privacy.test","source":"security","payload":{"suite":"pii-redaction","status":"passed"}}
+    ],
+    "expected_states":{"claim_build":"supported","claim_tests":"supported","claim_compatibility":"supported","claim_privacy":"supported"},
+    "expected_verdict":"VERIFIED"
+  },
+  {
+    "name": "missing-critical-evidence",
+    "events": [],
+    "expected_states":{"claim_build":"verification_pending","claim_tests":"verification_pending","claim_compatibility":"verification_pending","claim_privacy":"verification_pending"},
+    "expected_verdict":"INSUFFICIENT_EVIDENCE"
+  },
+  {
+    "name": "unit-test-failure",
+    "events": [
+      {"type":"build.completed","source":"ci","payload":{"status":"passed"}},
+      {"type":"test.completed","source":"ci","payload":{"suite":"unit","status":"failed","error":"assertion"}},
+      {"type":"migration.test","source":"staging","payload":{"suite":"compatibility","status":"passed"}},
+      {"type":"privacy.test","source":"security","payload":{"suite":"pii-redaction","status":"passed"}}
+    ],
+    "expected_states":{"claim_tests":"contradicted"},
+    "expected_verdict":"CONTRADICTED"
+  },
+  {
+    "name": "legacy-migration-failure",
+    "events": [
+      {"type":"build.completed","source":"ci","payload":{"status":"passed"}},
+      {"type":"test.completed","source":"ci","payload":{"suite":"unit","status":"passed"}},
+      {"type":"migration.test","source":"staging","payload":{"suite":"legacy compatibility","status":"failed","error":"processing enum invalid"}},
+      {"type":"privacy.test","source":"security","payload":{"suite":"pii-redaction","status":"passed"}}
+    ],
+    "expected_states":{"claim_compatibility":"contradicted"},
+    "expected_verdict":"CONTRADICTED"
+  },
+  {
+    "name": "pii-in-log-diff",
+    "events": [
+      {"type":"build.completed","source":"ci","payload":{"status":"passed"}},
+      {"type":"test.completed","source":"ci","payload":{"suite":"unit","status":"passed"}},
+      {"type":"migration.test","source":"staging","payload":{"suite":"compatibility","status":"passed"}},
+      {"type":"code.diff","source":"git","payload":{"added":"logger.info(customer.email)","example":"alice@example.com"}}
+    ],
+    "expected_states":{"claim_privacy":"contradicted"},
+    "expected_verdict":"CONTRADICTED"
+  },
+  {
+    "name": "build-failure-and-open-gaps",
+    "events": [
+      {"type":"build.completed","source":"ci","payload":{"status":"failed","error":"compile error"}},
+      {"type":"test.completed","source":"ci","payload":{"suite":"unit","status":"passed"}}
+    ],
+    "expected_states":{"claim_build":"contradicted","claim_compatibility":"verification_pending","claim_privacy":"verification_pending"},
+    "expected_verdict":"CONTRADICTED"
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "spec_version": "0.1",
+    "id": "research-claim-1",
+    "type": "claim.declared",
+    "source": { "name": "research-agent" },
+    "subject": { "type": "claim", "id": "claim-temperature-trend" },
+    "time": "2026-07-16T10:00:00Z",
+    "context": { "decision_id": "research-decision", "run_id": "research-run" },
+    "ordering": { "sequence": 1, "partition": "research-run" },
+    "data": { "statement": "The reported trend is supported by the selected dataset.", "critical": true }
+  },
+  {
+    "spec_version": "0.1",
+    "id": "research-evidence-1",
+    "type": "evidence.attached",
+    "source": { "name": "dataset-adapter" },
+    "subject": { "type": "evidence", "id": "dataset-observation" },
+    "time": "2026-07-16T10:00:01Z",
+    "context": { "decision_id": "research-decision", "run_id": "research-run", "parent_id": "research-claim-1" },
+    "ordering": { "sequence": 2, "partition": "research-run" },
+    "data": { "claim_id": "claim-temperature-trend", "evidence_type": "custom", "uri": "https://example.invalid/dataset", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  }
+]

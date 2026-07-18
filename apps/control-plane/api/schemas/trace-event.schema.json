@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.engine/schemas/trace-event.schema.json",
+  "title": "Trace event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "payload"],
+  "properties": {
+    "external_id": { "type": "string", "description": "Producer identity used for idempotent ingestion." },
+    "sequence": { "type": "integer", "minimum": 1, "description": "Optional producer sequence; assigned atomically when omitted." },
+    "type": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "default": "agent" },
+    "correlation_id": { "type": "string" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "payload": {
+      "type": ["object", "array", "string", "number", "boolean", "null"],
+      "description": "Observable event data. Hidden chain-of-thought is intentionally out of contract."
+    }
+  }
+}

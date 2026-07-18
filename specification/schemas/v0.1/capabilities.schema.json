@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/capabilities.schema.json",
+  "type": "object",
+  "required": ["protocol_versions", "transports", "event_types", "decision_statuses", "features", "limits"],
+  "properties": {
+    "protocol_versions": { "type": "array", "items": { "type": "string" } },
+    "transports": { "type": "array", "items": { "type": "string" } },
+    "event_types": { "type": "array", "items": { "type": "string" } },
+    "decision_statuses": { "type": "array", "items": { "type": "string" } },
+    "features": { "type": "array", "items": { "type": "string" } },
+    "limits": { "type": "object", "required": ["max_event_bytes", "max_batch_size"], "properties": { "max_event_bytes": { "type": "integer" }, "max_batch_size": { "type": "integer" } }, "additionalProperties": false }
+  },
+  "additionalProperties": true
+}

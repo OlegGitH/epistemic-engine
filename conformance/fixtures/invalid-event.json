@@ -1,0 +1,9 @@
+{
+  "spec_version": "0.1",
+  "id": "",
+  "type": "vendor.hidden_reasoning",
+  "source": { "name": "conformance" },
+  "subject": { "type": "claim", "id": "invalid" },
+  "time": "2026-07-16T10:00:00Z",
+  "data": {}
+}

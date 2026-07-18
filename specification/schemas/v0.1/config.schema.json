@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/config.schema.json",
+  "type": "object",
+  "required": ["api_version", "decision", "provider"],
+  "properties": {
+    "api_version": { "const": "epistemic.dev/v1alpha1" },
+    "mode": { "enum": ["observe", "advise", "enforce"] },
+    "decision": { "type": "object", "required": ["recommendation", "action_type", "subject_type", "subject_id"], "additionalProperties": true },
+    "provider": { "type": "object", "required": ["type"], "properties": { "type": { "enum": ["remote", "file", "noop", "local"] }, "endpoint": { "type": "string" }, "path": { "type": "string" } }, "additionalProperties": true },
+    "requirements": { "type": "array" },
+    "sources": { "type": "array" },
+    "outputs": { "type": "object" }
+  },
+  "additionalProperties": true
+}

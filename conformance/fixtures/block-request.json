@@ -1,0 +1,10 @@
+{
+  "spec_version": "0.1",
+  "decision_id": "block-fixture",
+  "recommendation": "Proceed with the consequential action.",
+  "action": { "type": "tool_execution", "subject": { "type": "tool_call", "id": "fixture-tool" }, "risk_level": "high" },
+  "mode": "enforce",
+  "events": [
+    { "spec_version": "0.1", "id": "block-contradiction", "type": "contradiction.detected", "source": { "name": "conformance" }, "subject": { "type": "contradiction", "id": "blocking" }, "time": "2026-07-16T10:00:00Z", "context": { "decision_id": "block-fixture" }, "data": { "critical": true } }
+  ]
+}

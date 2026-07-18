@@ -1,0 +1,8 @@
+{
+  "value": {
+    "z": [3, 2, 1],
+    "a": { "enabled": true, "count": 7 },
+    "message": "portable proof"
+  },
+  "sha256": "9108844ad57ee1dd5a3c0b17ddd2a060b6bb7d8fccb5cb2bcd7df262fa2b58b6"
+}

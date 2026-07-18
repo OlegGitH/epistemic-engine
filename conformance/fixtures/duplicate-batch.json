@@ -1,0 +1,6 @@
+{
+  "events": [
+    { "spec_version": "0.1", "id": "duplicate-1", "type": "claim.declared", "source": { "name": "conformance" }, "subject": { "type": "claim", "id": "one" }, "time": "2026-07-16T10:00:00Z", "data": {} },
+    { "spec_version": "0.1", "id": "duplicate-1", "type": "claim.declared", "source": { "name": "conformance" }, "subject": { "type": "claim", "id": "one" }, "time": "2026-07-16T10:00:00Z", "data": {} }
+  ]
+}

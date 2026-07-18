@@ -1,0 +1,30 @@
+api_version: epistemic.dev/v1alpha1
+mode: enforce
+decision:
+  id: orders-deployment
+  recommendation: The orders change is safe to deploy.
+  action_type: software_deployment
+  subject_type: repository
+  subject_id: demo/unsafe-orders-pr
+  risk_level: high
+  approved: false
+provider:
+  type: remote
+  endpoint: http://localhost:8080
+requirements:
+  - id: compatibility
+    description: Legacy order status values remain readable.
+    critical: true
+    evidence_types: [migration, junit]
+  - id: privacy
+    description: Customer email addresses do not enter application logs.
+    critical: true
+    evidence_types: [diff, junit]
+sources:
+  - type: diff
+    path: demo/corrected-orders.patch
+  - type: json
+    path: demo/recorded/compatibility-failed.json
+outputs:
+  result: .epistemic/result.json
+  certificate: .epistemic/certificate.json

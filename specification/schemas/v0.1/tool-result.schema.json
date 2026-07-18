@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/tool-result.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["tool", "status"],
+  "properties": {
+    "tool": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["passed", "failed", "error", "pending", "indeterminate"] },
+    "exit_code": { "type": "integer" },
+    "summary": { "type": "string" },
+    "url": { "type": "string", "format": "uri" }
+  }
+}

@@ -1,0 +1,185 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  protocol:
+    name: Go / protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: go.sum
+      - name: Test protocol, providers, relay, CLI, and conformance
+        run: go test ./...
+      - name: Run protocol example
+        run: go run ./cmd/epistemic evaluate --config examples/deployment-readiness/.epistemic.yaml
+
+  control-plane:
+    name: Go / control plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: epistemic
+          POSTGRES_USER: epistemic
+          POSTGRES_PASSWORD: epistemic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U epistemic -d epistemic"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: apps/control-plane/go.sum
+      - name: Validate database migration
+        env:
+          PGPASSWORD: epistemic
+        run: psql -h localhost -U epistemic -d epistemic -v ON_ERROR_STOP=1 -f db/migrations/000001_init.up.sql
+      - name: Test control plane
+        working-directory: apps/control-plane
+        env:
+          EPISTEMIC_TEST_DATABASE_URL: postgres://epistemic:epistemic@localhost:5432/epistemic?sslmode=disable
+        run: go test ./...
+      - name: Run deterministic evaluations
+        working-directory: apps/control-plane
+        run: go run ./cmd/eval
+
+  node:
+    name: Node / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: protocol SDK
+            directory: sdk/typescript
+            script: test
+          - name: React adapter
+            directory: adapters/react
+            script: build
+          - name: decision workspace
+            directory: apps/web
+            script: build
+          - name: Codex worker
+            directory: workers/codex-worker
+            script: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ${{ matrix.directory }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ matrix.directory }}
+        run: npm ci
+      - name: Run ${{ matrix.script }}
+        working-directory: ${{ matrix.directory }}
+        run: npm run ${{ matrix.script }}
+
+  python:
+    name: Python / SDK and fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test Python protocol SDK
+        run: python -m unittest discover -s sdk/python/tests
+      - name: Compile Python integrations
+        run: |
+          python -m compileall -q agents/demo-agent/src
+          python -m compileall -q adapters/openai-agents adapters/mcp sdk/python/src
+      - name: Prove unsafe fixture fails and correction passes
+        shell: bash
+        run: |
+          if (cd demo/unsafe-orders-pr && python -m unittest discover -s tests); then
+            echo "unsafe fixture unexpectedly passed"
+            exit 1
+          fi
+          cp -R demo/unsafe-orders-pr /tmp/corrected-orders
+          git -C /tmp/corrected-orders init -q
+          (cd /tmp/corrected-orders && git apply "$GITHUB_WORKSPACE/demo/corrected-orders.patch")
+          (cd /tmp/corrected-orders && python -m unittest discover -s tests)
+
+  epistemic-gate:
+    name: Epistemic / quality gate
+    if: always()
+    needs: [protocol, control-plane, node, python]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Record pipeline result
+        shell: bash
+        env:
+          PROTOCOL_RESULT: ${{ needs.protocol.result }}
+          CONTROL_PLANE_RESULT: ${{ needs.control-plane.result }}
+          NODE_RESULT: ${{ needs.node.result }}
+          PYTHON_RESULT: ${{ needs.python.result }}
+        run: |
+          mkdir -p .epistemic/tools
+          status=passed
+          for result in "$PROTOCOL_RESULT" "$CONTROL_PLANE_RESULT" "$NODE_RESULT" "$PYTHON_RESULT"; do
+            if [ "$result" != success ]; then status=failed; fi
+          done
+          printf '{"tool":"github-actions","status":"%s","protocol":"%s","control_plane":"%s","node":"%s","python":"%s"}\n' \
+            "$status" "$PROTOCOL_RESULT" "$CONTROL_PLANE_RESULT" "$NODE_RESULT" "$PYTHON_RESULT" \
+            > .epistemic/tools/github-actions.json
+          cat > .epistemic/ci.yaml <<EOF
+          api_version: epistemic.dev/v1alpha1
+          mode: enforce
+          decision:
+            id: github-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}
+            recommendation: The Epistemic Engine revision is safe to merge.
+            action_type: source_change
+            subject_type: repository
+            subject_id: ${GITHUB_REPOSITORY}@${GITHUB_SHA}
+            risk_level: low
+            approved: true
+            approved_by: github-actions
+          provider:
+            type: local
+          requirements:
+            - id: ci
+              description: All required GitHub Actions jobs pass.
+              critical: true
+              evidence_types: [tool]
+          sources:
+            - type: tool
+              name: github-actions
+              path: .epistemic/tools/github-actions.json
+          outputs:
+            result: .epistemic/result.json
+            certificate: .epistemic/certificate.json
+          EOF
+      - name: Evaluate Epistemic quality gate
+        uses: ./adapters/github-action
+        with:
+          config: .epistemic/ci.yaml
+          certificate: .epistemic/certificate.json

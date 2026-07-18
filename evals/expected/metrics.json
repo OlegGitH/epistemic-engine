@@ -1,0 +1,7 @@
+{
+  "scenario_count": 6,
+  "critical_claim_recall": 1.0,
+  "contradiction_recall": 1.0,
+  "decision_accuracy": 1.0,
+  "certificate_reproducibility": 1.0
+}

@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://epistemic.dev/schemas/v0.1/assumption-event.schema.json","allOf":[{"$ref":"event.schema.json"},{"properties":{"type":{"enum":["assumption.declared","assumption.resolved"]}}}]}

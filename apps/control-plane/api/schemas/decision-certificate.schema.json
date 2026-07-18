@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.engine/schemas/decision-certificate.schema.json",
+  "title": "Decision Certificate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "decision_id", "run_id", "recommendation", "verdict", "action_allowed", "human_approved", "conditions", "policy_version", "artifact_hashes", "claims", "verifications", "issued_at", "proof"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "decision_id": { "type": "string" },
+    "run_id": { "type": "string" },
+    "recommendation": { "type": "string" },
+    "verdict": { "enum": ["VERIFIED", "VERIFIED_WITH_CONDITIONS", "INSUFFICIENT_EVIDENCE", "CONTRADICTED", "REJECTED"] },
+    "action_allowed": { "type": "boolean" },
+    "human_approved": { "type": "boolean" },
+    "conditions": { "type": "array", "items": { "type": "string" } },
+    "policy_version": { "type": "string" },
+    "artifact_hashes": { "type": "array", "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+    "claims": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+    "verifications": { "type": "array", "items": { "type": "object" } },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": { "const": "SHA-256" },
+        "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["id", "statement", "scope", "critical", "state", "support"],
+      "properties": {
+        "id": { "type": "string" },
+        "statement": { "type": "string" },
+        "scope": { "type": "string" },
+        "critical": { "type": "boolean" },
+        "state": { "enum": ["supported", "partially_supported", "unsupported", "contradicted", "stale", "verification_pending", "externally_verified", "rejected"] },
+        "support": {
+          "type": "object",
+          "required": ["value", "semantics"],
+          "properties": {
+            "value": { "type": "number", "minimum": 0, "maximum": 1 },
+            "semantics": { "const": "explainable evidence support; not probability of truth" }
+          }
+        }
+      }
+    }
+  }
+}

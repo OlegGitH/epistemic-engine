@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/decision-request.schema.json",
+  "type": "object",
+  "required": ["spec_version", "recommendation", "action"],
+  "properties": {
+    "spec_version": { "const": "0.1" },
+    "decision_id": { "type": "string" },
+    "recommendation": { "type": "string", "minLength": 1 },
+    "action": { "type": "object", "required": ["type", "subject"], "properties": { "type": { "type": "string" }, "subject": { "$ref": "event.schema.json#/$defs/subject" }, "risk_level": { "enum": ["low", "medium", "high", "critical"] } }, "additionalProperties": true },
+    "context": { "$ref": "event.schema.json#/$defs/context" },
+    "mode": { "enum": ["observe", "advise", "enforce"] },
+    "requirements": { "type": "array", "items": { "type": "object", "required": ["id", "description", "critical"], "properties": { "id": { "type": "string" }, "description": { "type": "string" }, "critical": { "type": "boolean" }, "evidence_types": { "type": "array", "items": { "type": "string" } } }, "additionalProperties": true } },
+    "events": { "type": "array", "items": { "$ref": "event.schema.json" } },
+    "approval": { "type": "object", "properties": { "approved": { "type": "boolean" }, "actor": { "type": "string" }, "time": { "type": "string", "format": "date-time" } }, "additionalProperties": false },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": true
+}

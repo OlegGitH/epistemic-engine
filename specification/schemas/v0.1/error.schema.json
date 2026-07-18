@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epistemic.dev/schemas/v0.1/error.schema.json",
+  "type": "object",
+  "required": ["spec_version", "code", "message", "retryable"],
+  "properties": { "spec_version": { "const": "0.1" }, "code": { "type": "string" }, "message": { "type": "string" }, "retryable": { "type": "boolean" }, "details": { "type": "object", "additionalProperties": true } },
+  "additionalProperties": false
+}

@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://epistemic.dev/schemas/v0.1/decision-event.schema.json","allOf":[{"$ref":"event.schema.json"},{"properties":{"type":{"enum":["decision.started","decision.requested","decision.evaluated","decision.blocked","decision.approved","decision.completed"]}}}]}

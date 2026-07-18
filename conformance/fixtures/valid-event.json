@@ -1,0 +1,12 @@
+{
+  "spec_version": "0.1",
+  "id": "fixture-event-1",
+  "type": "claim.declared",
+  "source": { "name": "conformance", "version": "0.1" },
+  "subject": { "type": "claim", "id": "fixture-claim" },
+  "time": "2026-07-16T10:00:00Z",
+  "context": { "decision_id": "fixture-decision", "run_id": "fixture-run", "correlation_id": "fixture-correlation" },
+  "ordering": { "sequence": 1, "partition": "fixture-run" },
+  "idempotency_key": "fixture-event-1",
+  "data": { "statement": "The fixture claim is observable.", "critical": true }
+}

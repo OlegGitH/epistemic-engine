@@ -1,0 +1,9 @@
+{
+  "title": "Checkout service deployment readiness",
+  "source": "demo-agent",
+  "recommendation": "The proposed checkout change is safe to deploy.",
+  "raw": {
+    "repository": "example/checkout",
+    "revision": "demo-sha"
+  }
+}

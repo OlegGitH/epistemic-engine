@@ -1,0 +1,4 @@
+# Canonical Compose definition lives at the repository root so `docker compose up`
+# works without flags. This file documents the deployment entry point.
+include:
+  - ../compose.yaml

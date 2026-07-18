@@ -1,0 +1,6 @@
+{
+  "claim_id": "claim_compatibility",
+  "claim": "The change is backward-compatible with deployed interfaces and data.",
+  "check": "Add one regression test proving that the legacy processing status migrates to in_progress.",
+  "required_test": "tests/test_compatibility.py"
+}

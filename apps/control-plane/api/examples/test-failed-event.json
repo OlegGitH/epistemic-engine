@@ -1,0 +1,11 @@
+{
+  "type": "test.completed",
+  "source": "ci",
+  "occurred_at": "2026-07-16T10:01:00Z",
+  "payload": {
+    "suite": "migration-compatibility",
+    "status": "failed",
+    "failure": "legacy status value cannot be decoded",
+    "revision": "demo-sha"
+  }
+}

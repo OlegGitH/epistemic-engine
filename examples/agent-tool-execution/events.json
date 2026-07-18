@@ -1,0 +1,24 @@
+[
+  {
+    "spec_version": "0.1",
+    "id": "tool-verification-requested",
+    "type": "verification.requested",
+    "source": { "name": "example-agent", "version": "1.0" },
+    "subject": { "type": "tool_call", "id": "delete-preview-environment" },
+    "time": "2026-07-16T10:00:00Z",
+    "context": { "decision_id": "tool-decision", "run_id": "agent-run", "correlation_id": "agent-run" },
+    "ordering": { "sequence": 1, "partition": "agent-run" },
+    "data": { "consequential": true, "approval_required": true }
+  },
+  {
+    "spec_version": "0.1",
+    "id": "tool-verification-approved",
+    "type": "verification.approved",
+    "source": { "name": "human-review" },
+    "subject": { "type": "tool_call", "id": "delete-preview-environment" },
+    "time": "2026-07-16T10:01:00Z",
+    "context": { "decision_id": "tool-decision", "run_id": "agent-run", "correlation_id": "agent-run", "parent_id": "tool-verification-requested" },
+    "ordering": { "sequence": 2, "partition": "agent-run" },
+    "data": { "approved": true, "actor": "reviewer@example.invalid" }
+  }
+]

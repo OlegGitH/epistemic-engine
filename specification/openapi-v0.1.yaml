@@ -1,0 +1,76 @@
+openapi: 3.1.0
+info:
+  title: Epistemic Protocol
+  version: 0.1.0
+  description: Vendor-neutral HTTP/JSON interoperability contract for epistemic events and workflow decisions.
+servers:
+  - url: http://localhost:8080
+paths:
+  /.well-known/epistemic:
+    get:
+      operationId: discoverEpistemicCapabilities
+      responses:
+        '200': { description: Capabilities, content: { application/json: { schema: { $ref: './schemas/v0.1/capabilities.schema.json' } } } }
+  /v1/events:
+    post:
+      operationId: emitEpistemicEvent
+      parameters: [ { $ref: '#/components/parameters/Context' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: './schemas/v0.1/event.schema.json' } } } }
+      responses:
+        '202': { description: Accepted or deduplicated }
+        '400': { $ref: '#/components/responses/Error' }
+  /v1/events:batch:
+    post:
+      operationId: emitEpistemicEventBatch
+      parameters: [ { $ref: '#/components/parameters/Context' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties: { events: { type: array, maxItems: 100, items: { $ref: './schemas/v0.1/event.schema.json' } } }
+      responses:
+        '202': { description: Per-event acceptance result }
+        '400': { $ref: '#/components/responses/Error' }
+  /v1/decisions:evaluate:
+    post:
+      operationId: evaluateEpistemicDecision
+      parameters: [ { $ref: '#/components/parameters/Context' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: './schemas/v0.1/decision-request.schema.json' } } } }
+      responses:
+        '200': { description: Portable result, content: { application/json: { schema: { $ref: './schemas/v0.1/decision-result.schema.json' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+  /v1/decisions/{decisionId}:
+    get:
+      operationId: getEpistemicDecision
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      responses:
+        '200': { description: Portable result, content: { application/json: { schema: { $ref: './schemas/v0.1/decision-result.schema.json' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/decisions/{decisionId}/events:
+    get:
+      operationId: getEpistemicDecisionEvents
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      responses:
+        '200': { description: Ordered event history }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/decisions/{decisionId}/certificate:
+    get:
+      operationId: getEpistemicCertificate
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      responses:
+        '200': { description: Portable immutable proof, content: { application/json: { schema: { $ref: './schemas/v0.1/certificate.schema.json' } } } }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/stream:
+    get:
+      operationId: streamEpistemicEvents
+      responses:
+        '200': { description: Portable lifecycle stream, content: { text/event-stream: { schema: { type: string } } } }
+components:
+  parameters:
+    DecisionId: { name: decisionId, in: path, required: true, schema: { type: string } }
+    Context: { name: Epistemic-Context, in: header, required: false, schema: { type: string } }
+  responses:
+    Error: { description: Protocol error, content: { application/json: { schema: { $ref: './schemas/v0.1/error.schema.json' } } } }

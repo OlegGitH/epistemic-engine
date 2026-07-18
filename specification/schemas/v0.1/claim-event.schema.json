@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://epistemic.dev/schemas/v0.1/claim-event.schema.json","allOf":[{"$ref":"event.schema.json"},{"properties":{"type":{"enum":["claim.declared","claim.updated","claim.supported","claim.contradicted","claim.superseded","claim.rejected"]}}}]}

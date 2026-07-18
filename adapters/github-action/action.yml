@@ -1,0 +1,34 @@
+name: Epistemic Protocol Evaluate
+description: Evaluate portable evidence and upload a Decision Certificate.
+inputs:
+  config:
+    description: Path to .epistemic.yaml
+    required: false
+    default: .epistemic.yaml
+  certificate:
+    description: Certificate artifact path from the configuration
+    required: false
+    default: .epistemic/certificate.json
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.25.x'
+    - name: Evaluate epistemic decision
+      shell: bash
+      run: |
+        set -euo pipefail
+        tool="$RUNNER_TEMP/epistemic-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        trap 'rm -f "$tool"' EXIT
+        (cd "$GITHUB_ACTION_PATH/../.." && go build -o "$tool" ./cmd/epistemic)
+        cd "$GITHUB_WORKSPACE"
+        "$tool" evaluate --config "${{ inputs.config }}"
+    - name: Upload Decision Certificate
+      if: always() && hashFiles(inputs.certificate) != ''
+      uses: actions/upload-artifact@v7
+      with:
+        name: epistemic-decision-certificate
+        path: ${{ inputs.certificate }}
+        if-no-files-found: error

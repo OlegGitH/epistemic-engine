@@ -1,0 +1,347 @@
+openapi: 3.1.0
+info:
+  title: Epistemic Control Plane API
+  version: 0.1.0
+  description: >-
+    Generate CI quality gates and evaluate deployment-readiness claims, evidence,
+    verification, policy, and proof. Start with the Tools operations to generate a
+    GitHub Actions workflow. Support values are evidence-support aggregates, never
+    probabilities of truth.
+servers:
+  - url: /
+    description: The control plane serving this document
+tags:
+  - name: Tools
+    description: Discover and invoke reusable Epistemic Engine tools.
+  - name: Runs
+    description: Ingest observations and build an evidence graph.
+  - name: Decisions
+    description: Plan verification, apply policy, and retrieve certificates.
+  - name: System
+    description: Service health and discovery.
+paths:
+  /healthz:
+    get:
+      tags: [System]
+      operationId: health
+      summary: Check control-plane health
+      responses:
+        '200':
+          description: The service is ready to accept requests
+          content:
+            application/json:
+              example: { status: ok }
+  /v1/tools:
+    get:
+      tags: [Tools]
+      operationId: listTools
+      summary: List tools exposed by Epistemic Engine
+      responses:
+        '200':
+          description: Tool catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tools]
+                properties:
+                  tools: { type: array, items: { $ref: '#/components/schemas/Tool' } }
+  /v1/tools/github-actions/pipelines:
+    post:
+      tags: [Tools]
+      operationId: generateGitHubPipeline
+      summary: Generate a GitHub Actions pipeline with Epistemic quality gating
+      description: >-
+        Returns repository files for the caller to review and apply. The operation
+        does not modify a GitHub repository and does not execute project-specific
+        tools. Omitted properties use the documented defaults.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GenerateGitHubPipeline' }
+            examples:
+              published-action:
+                summary: Use a published Epistemic GitHub Action
+                value:
+                  name: Epistemic CI
+                  epistemic_action: OlegGitH/epistemic-engine/adapters/github-action@v0.1
+                  config_path: .epistemic.yaml
+                  certificate_path: .epistemic/certificate.json
+              action-in-same-repository:
+                summary: Use the adapter contained in this repository
+                value:
+                  epistemic_action: ./adapters/github-action
+      responses:
+        '201': { description: Generated, content: { application/json: { schema: { $ref: '#/components/schemas/GeneratedPipeline' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /v1/runs:
+    post:
+      tags: [Runs]
+      operationId: createRun
+      summary: Create an ingestion run and its deployment decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRun' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Run' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /v1/runs/{runId}/events:
+    post:
+      tags: [Runs]
+      operationId: appendRunEvent
+      summary: Append an observable trace or artifact event
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '../schemas/trace-event.schema.json' }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Event' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/runs/{runId}/analyze:
+    post:
+      tags: [Runs]
+      operationId: analyzeRun
+      summary: Decompose the recommendation and construct its claim graph
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: Analysis graph, content: { application/json: { schema: { $ref: '#/components/schemas/Graph' } } } }
+  /v1/runs/{runId}/graph:
+    get:
+      tags: [Runs]
+      operationId: getRunGraph
+      summary: Get claims, evidence, relations, unknowns, and checks
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: Claim graph, content: { application/json: { schema: { $ref: '#/components/schemas/Graph' } } } }
+  /v1/runs/{runId}/events/stream:
+    get:
+      tags: [Runs]
+      operationId: streamRun
+      summary: Stream the graph snapshot and lifecycle updates over SSE
+      parameters: [ { $ref: '#/components/parameters/RunId' } ]
+      responses:
+        '200': { description: Server-sent events, content: { text/event-stream: { schema: { type: string } } } }
+  /v1/decisions/{decisionId}/verification-plan:
+    post:
+      tags: [Decisions]
+      operationId: planVerification
+      summary: Plan the smallest checks for unsupported critical claims
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      responses:
+        '201': { description: Planned, content: { application/json: { schema: { type: object, properties: { verifications: { type: array, items: { $ref: '#/components/schemas/Verification' } } } } } } }
+  /v1/verifications/{verificationId}/execute:
+    post:
+      tags: [Decisions]
+      operationId: recordVerificationExecution
+      summary: Execute or record an approved controlled verification
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [approved]
+              properties:
+                environment: { enum: [sandbox, staging] }
+                outcome: { enum: [passed, failed] }
+                artifact: { description: Structured output from the controlled runner }
+                approved: { type: boolean, description: Explicit approval for this bounded check }
+                approved_by: { type: string }
+      responses:
+        '200': { description: Recorded, content: { application/json: { schema: { $ref: '#/components/schemas/Verification' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /v1/decisions/{decisionId}/evaluate:
+    post:
+      tags: [Decisions]
+      operationId: evaluateDecision
+      summary: Apply hard policy gates and issue an immutable certificate
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [human_approved]
+              properties: { human_approved: { type: boolean } }
+      responses:
+        '200': { description: Evaluated, content: { application/json: { schema: { $ref: '../schemas/decision-certificate.schema.json' } } } }
+  /v1/decisions/{decisionId}/certificate:
+    get:
+      tags: [Decisions]
+      operationId: getDecisionCertificate
+      summary: Retrieve the immutable Decision Certificate
+      parameters: [ { $ref: '#/components/parameters/DecisionId' } ]
+      responses:
+        '200': { description: Certificate, content: { application/json: { schema: { $ref: '../schemas/decision-certificate.schema.json' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  parameters:
+    RunId: { name: runId, in: path, required: true, schema: { type: string } }
+    DecisionId: { name: decisionId, in: path, required: true, schema: { type: string } }
+  responses:
+    BadRequest: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    NotFound: { description: Object not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  schemas:
+    Tool:
+      type: object
+      required: [id, name, description, provider, capabilities]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        provider: { type: string }
+        capabilities: { type: array, items: { type: string } }
+    GenerateGitHubPipeline:
+      type: object
+      additionalProperties: false
+      description: Options for a vendor-neutral Epistemic GitHub Actions workflow.
+      properties:
+        name:
+          type: string
+          default: Epistemic CI
+          description: Workflow display name.
+        epistemic_action:
+          type: string
+          default: ./adapters/github-action
+          description: Local action path or published owner/repository/path@ref.
+        config_path:
+          type: string
+          default: .epistemic.yaml
+          description: Repository-relative Epistemic configuration path.
+        certificate_path:
+          type: string
+          default: .epistemic/certificate.json
+          description: Repository-relative certificate output path.
+    GeneratedPipeline:
+      type: object
+      required: [tool_id, files, required_secrets, required_variables]
+      properties:
+        tool_id: { type: string }
+        files:
+          type: array
+          items:
+            type: object
+            required: [path, content]
+            properties:
+              path: { type: string, description: Repository-relative destination path. }
+              content: { type: string, description: Complete UTF-8 file content. }
+        required_secrets: { type: array, items: { type: string }, description: GitHub Actions secrets required by the generated workflow. }
+        required_variables: { type: array, items: { type: string }, description: GitHub Actions variables required by the generated workflow. }
+    Error:
+      type: object
+      required: [error]
+      properties: { error: { type: string } }
+    CreateRun:
+      type: object
+      additionalProperties: false
+      required: [recommendation]
+      properties:
+        external_trace_id: { type: string }
+        title: { type: string }
+        goal: { type: string }
+        source: { type: string }
+        recommendation: { type: string, minLength: 1 }
+        action_type: { type: string }
+        subject: { type: string }
+        risk_level: { enum: [low, medium, high, critical] }
+        raw: { description: Unmodified source metadata }
+    Run:
+      type: object
+      required: [id, title, goal, source, recommendation, status, decision_id, events, created_at]
+      properties:
+        id: { type: string }
+        external_trace_id: { type: string }
+        title: { type: string }
+        goal: { type: string }
+        source: { type: string }
+        recommendation: { type: string }
+        status: { enum: [ingesting, analyzed] }
+        decision_id: { type: string }
+        events: { type: array, items: { $ref: '#/components/schemas/Event' } }
+        raw: {}
+        created_at: { type: string, format: date-time }
+    Event:
+      type: object
+      required: [id, sequence, type, source, occurred_at, payload]
+      properties:
+        id: { type: string }
+        external_id: { type: string }
+        sequence: { type: integer, format: int64, minimum: 1 }
+        type: { type: string }
+        source: { type: string }
+        correlation_id: { type: string }
+        occurred_at: { type: string, format: date-time }
+        payload: {}
+    Claim:
+      type: object
+      required: [id, decision_id, statement, scope, critical, importance, required_evidence_types, state, justification, support, evidence_ids, created_at]
+      properties:
+        id: { type: string }
+        decision_id: { type: string }
+        statement: { type: string }
+        scope: { type: string }
+        critical: { type: boolean }
+        importance: { enum: [critical, supporting] }
+        required_evidence_types: { type: array, items: { type: string } }
+        state: { enum: [supported, partially_supported, unsupported, contradicted, stale, verification_pending, externally_verified, rejected] }
+        justification: { type: string }
+        support:
+          type: object
+          description: Explainable evidence support; not probability of truth.
+          properties:
+            value: { type: number, minimum: 0, maximum: 1 }
+            evidence_coverage: { type: number, minimum: 0, maximum: 1 }
+            source_quality: { type: number, minimum: 0, maximum: 1 }
+            source_independence: { type: number, minimum: 0, maximum: 1 }
+            freshness: { type: number, minimum: 0, maximum: 1 }
+            scope_match: { type: number, minimum: 0, maximum: 1 }
+            direct_verification_strength: { type: number, minimum: 0, maximum: 1 }
+            contradiction_burden: { type: number, minimum: 0, maximum: 1 }
+            semantics: { type: string }
+        evidence_ids: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+    Verification:
+      type: object
+      required: [id, decision_id, claim_id, check, kind, specification, environment, status, requires_approval, approved, created_at]
+      properties:
+        id: { type: string }
+        decision_id: { type: string }
+        claim_id: { type: string }
+        check: { type: string }
+        kind: { enum: [test, human] }
+        specification: { type: object }
+        environment: { enum: [sandbox, staging] }
+        status: { enum: [planned, running, completed] }
+        requires_approval: { type: boolean }
+        approved: { type: boolean }
+        approved_by: { type: string }
+        outcome: { enum: [passed, failed, ''] }
+        artifact: {}
+        artifact_hash: { type: string, pattern: '^[a-f0-9]{64}$' }
+        created_at: { type: string, format: date-time }
+        executed_at: { type: string, format: date-time }
+    Graph:
+      type: object
+      required: [run, decision, claims, evidence, relations, assumptions, unknowns, verifications]
+      properties:
+        run: { $ref: '#/components/schemas/Run' }
+        decision: { type: object }
+        claims: { type: array, items: { $ref: '#/components/schemas/Claim' } }
+        evidence: { type: array, items: { type: object } }
+        relations: { type: array, items: { type: object } }
+        assumptions: { type: array, items: { type: object } }
+        unknowns: { type: array, items: { type: object } }
+        verifications: { type: array, items: { $ref: '#/components/schemas/Verification' } }

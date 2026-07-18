@@ -1,0 +1,23 @@
+api_version: epistemic.dev/v1alpha1
+mode: advise
+decision:
+  id: example-deployment
+  recommendation: The example service is safe to deploy.
+  action_type: software_deployment
+  subject_type: repository
+  subject_id: examples/deployment-readiness
+  risk_level: high
+  approved: false
+provider:
+  type: local
+requirements:
+  - id: tests
+    description: The test suite passes.
+    critical: true
+    evidence_types: [junit]
+sources:
+  - type: junit
+    path: examples/deployment-readiness/junit.xml
+outputs:
+  result: .epistemic/example-result.json
+  certificate: .epistemic/example-certificate.json

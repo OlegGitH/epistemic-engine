@@ -1,0 +1,11 @@
+{
+  "type": "test.completed",
+  "source": "ci",
+  "occurred_at": "2026-07-16T10:00:00Z",
+  "payload": {
+    "suite": "unit",
+    "status": "passed",
+    "tests": 142,
+    "revision": "demo-sha"
+  }
+}
