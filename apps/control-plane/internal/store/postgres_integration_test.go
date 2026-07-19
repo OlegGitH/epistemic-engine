@@ -21,11 +21,23 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer repository.Close()
-	if _, err = repository.pool.Exec(ctx, "TRUNCATE proofs, verifications, unknowns, assumptions, claim_evidence, relations, evidence, claims, run_events, decisions, runs RESTART IDENTITY CASCADE"); err != nil {
+	if _, err = repository.pool.Exec(ctx, "TRUNCATE published_certificates, project_reports, project_connections, proofs, verifications, unknowns, assumptions, claim_evidence, relations, evidence, claims, run_events, decisions, runs, ai_systems, projects, accounts RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	run := domain.Run{ID: "run_postgres_test", Title: "Round trip", Goal: "Verify persistence", Source: "test", Recommendation: "Deploy", Status: domain.RunIngesting, DecisionID: "decision_postgres_test", CreatedAt: now}
+	account := domain.Account{ID: "account_postgres_test", Name: "Test account", Slug: "test-account", CreatedAt: now}
+	if err = repository.CreateAccount(ctx, account); err != nil {
+		t.Fatal(err)
+	}
+	project := domain.Project{ID: "project_postgres_test", AccountID: account.ID, Name: "Test project", Slug: "test-project", CreatedAt: now}
+	if err = repository.CreateProject(ctx, project); err != nil {
+		t.Fatal(err)
+	}
+	system := domain.AISystem{ID: "ai_postgres_test", AccountID: account.ID, ProjectID: project.ID, Name: "Test analyzer", Provider: "OpenAI", Model: "gpt-5.6", Purpose: "Exercise persistence", DataClasses: []string{"test_data"}, Tools: []string{}, Status: "active", CreatedAt: now, UpdatedAt: now}
+	if err = repository.CreateAISystem(ctx, system); err != nil {
+		t.Fatal(err)
+	}
+	run := domain.Run{ID: "run_postgres_test", AccountID: account.ID, ProjectID: project.ID, AISystemID: system.ID, Title: "Round trip", Goal: "Verify persistence", Source: "test", Recommendation: "Deploy", Status: domain.RunIngesting, DecisionID: "decision_postgres_test", CreatedAt: now}
 	decision := domain.Decision{ID: run.DecisionID, RunID: run.ID, Recommendation: run.Recommendation, ActionType: "software_deployment", Subject: "fixture", RiskLevel: "high", PolicyVersion: "deployment-readiness/v1", Conditions: []string{}, CreatedAt: now}
 	if err = repository.CreateRun(ctx, run, decision); err != nil {
 		t.Fatal(err)
@@ -63,5 +75,33 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 	}
 	if len(graph.Run.Events) != 1 || len(graph.Claims) != 1 || graph.Claims[0].State != domain.ClaimExternallyVerified || len(graph.Verifications) != 1 || len(graph.Decision.ClaimIDs) != 1 {
 		t.Fatalf("unexpected graph: %+v", graph)
+	}
+	connection := domain.ProjectConnection{ID: "connection_postgres_test", AccountID: account.ID, ProjectID: project.ID, Provider: "github-actions", Repository: "example/project", Status: "active", TokenHash: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", TokenPrefix: "epk_example", CreatedAt: now}
+	if err = repository.CreateProjectConnection(ctx, connection); err != nil {
+		t.Fatal(err)
+	}
+	report := domain.ProjectReport{ID: "report_postgres_test", ExternalID: "workflow-1-1", AccountID: account.ID, ProjectID: project.ID, ConnectionID: connection.ID, AISystemID: system.ID, Tool: "project-quality", Status: "passed", Summary: "Checks passed", Details: json.RawMessage(`{"status":"passed"}`), ReceivedAt: now}
+	publication := domain.PublishedCertificate{ID: "publication_postgres_test", ExternalID: report.ExternalID, AccountID: account.ID, ProjectID: project.ID, ConnectionID: connection.ID, AISystemID: system.ID, DecisionID: "portable-decision", RunID: "github-run-1", Status: "allow", ActionAllowed: true, PolicyVersion: "epistemic.dev/v0.1", Digest: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", ArtifactHashes: []string{}, IssuedAt: now, ReceivedAt: now, Raw: json.RawMessage(`{"proof":{"algorithm":"SHA-256"}}`)}
+	ingest := domain.ProjectIngest{Connection: connection, Report: &report, Certificate: &publication}
+	firstIngest, err := repository.SaveProjectIngest(ctx, ingest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstReportID, firstCertificateID := firstIngest.Report.ID, firstIngest.Certificate.ID
+	report.ID = "duplicate-report"
+	publication.ID = "duplicate-publication"
+	retryIngest, err := repository.SaveProjectIngest(ctx, ingest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstReportID != retryIngest.Report.ID || firstCertificateID != retryIngest.Certificate.ID {
+		t.Fatalf("postgres ingest identities were not idempotent: first=%+v retry=%+v", firstIngest, retryIngest)
+	}
+	dashboard, err := repository.GetAccountDashboard(ctx, account.ID, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dashboard.Metrics.Projects != 1 || dashboard.Metrics.ConnectedProjects != 1 || dashboard.Metrics.Reports != 1 || dashboard.Metrics.AISystems != 1 || dashboard.Metrics.ValidCertificates != 1 || dashboard.Knowledge.Claims != 1 || dashboard.Projects[0].KnowledgeCoveragePct != 100 {
+		t.Fatalf("unexpected persisted dashboard: %+v", dashboard)
 	}
 }

@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	ErrInvalid  = errors.New("invalid request")
-	ErrConflict = errors.New("conflict")
+	ErrInvalid      = errors.New("invalid request")
+	ErrConflict     = errors.New("conflict")
+	ErrUnauthorized = errors.New("unauthorized")
 )
 
 type Service struct {
@@ -49,6 +50,9 @@ func New(repo store.Repository, analyzer analysis.Analyzer, options ...Option) *
 }
 
 type CreateRunInput struct {
+	AccountID       string          `json:"account_id"`
+	ProjectID       string          `json:"project_id"`
+	AISystemID      string          `json:"ai_system_id"`
 	ExternalTraceID string          `json:"external_trace_id"`
 	Title           string          `json:"title"`
 	Goal            string          `json:"goal"`
@@ -85,7 +89,31 @@ func (s *Service) CreateRun(ctx context.Context, in CreateRunInput) (domain.Run,
 	if in.RiskLevel == "" {
 		in.RiskLevel = "high"
 	}
-	run := domain.Run{ID: runID, ExternalTraceID: in.ExternalTraceID, Title: in.Title, Goal: in.Goal, Source: in.Source, Recommendation: in.Recommendation, Status: domain.RunIngesting, DecisionID: decisionID, Events: []domain.Event{}, Raw: in.Raw, CreatedAt: now}
+	if in.ProjectID != "" {
+		project, err := s.repo.GetProject(ctx, in.ProjectID)
+		if err != nil {
+			return domain.Run{}, err
+		}
+		if in.AccountID != "" && in.AccountID != project.AccountID {
+			return domain.Run{}, fmt.Errorf("%w: project does not belong to account", ErrInvalid)
+		}
+		in.AccountID = project.AccountID
+	}
+	if in.AccountID != "" {
+		if _, err := s.repo.GetAccount(ctx, in.AccountID); err != nil {
+			return domain.Run{}, err
+		}
+	}
+	if in.AISystemID != "" {
+		system, err := s.repo.GetAISystem(ctx, in.AISystemID)
+		if err != nil {
+			return domain.Run{}, err
+		}
+		if in.ProjectID == "" || system.ProjectID != in.ProjectID {
+			return domain.Run{}, fmt.Errorf("%w: AI system does not belong to project", ErrInvalid)
+		}
+	}
+	run := domain.Run{ID: runID, AccountID: in.AccountID, ProjectID: in.ProjectID, AISystemID: in.AISystemID, ExternalTraceID: in.ExternalTraceID, Title: in.Title, Goal: in.Goal, Source: in.Source, Recommendation: in.Recommendation, Status: domain.RunIngesting, DecisionID: decisionID, Events: []domain.Event{}, Raw: in.Raw, CreatedAt: now}
 	decision := domain.Decision{ID: decisionID, RunID: runID, Recommendation: in.Recommendation, ActionType: in.ActionType, Subject: in.Subject, RiskLevel: in.RiskLevel, PolicyVersion: policy.Version, Conditions: []string{}, ClaimIDs: []string{}, CreatedAt: now}
 	if err := s.repo.CreateRun(ctx, run, decision); err != nil {
 		return domain.Run{}, err

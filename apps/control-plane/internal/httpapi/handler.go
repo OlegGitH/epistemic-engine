@@ -35,9 +35,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf(`{"level":"info","message":"http_request","correlation_id":%q,"method":%q,"path":%q,"duration_ms":%d}`, correlationID, r.Method, r.URL.Path, time.Since(started).Milliseconds())
 	}()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Correlation-ID, Epistemic-Context")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Correlation-ID, Epistemic-Context")
 	w.Header().Set("Access-Control-Expose-Headers", "X-Correlation-ID, Epistemic-Context")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "DELETE,GET,POST,OPTIONS")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -60,6 +60,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "accounts":
+		h.createAccount(w, r)
+	case r.Method == http.MethodGet && len(parts) == 4 && parts[1] == "accounts" && parts[3] == "dashboard":
+		h.accountDashboard(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "accounts" && parts[3] == "projects":
+		h.createProject(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "projects" && parts[3] == "ai-systems":
+		h.createAISystem(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "projects" && parts[3] == "connections":
+		h.createProjectConnection(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "ingest":
+		h.ingestProject(w, r)
+	case r.Method == http.MethodDelete && len(parts) == 3 && parts[1] == "connections":
+		h.revokeProjectConnection(w, r, parts[2])
 	case r.Method == http.MethodGet && len(parts) == 2 && parts[1] == "tools":
 		h.tools(w)
 	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "tools" && parts[2] == "github-actions" && parts[3] == "pipelines":
@@ -103,6 +117,62 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	default:
 		notFound(w)
 	}
+}
+
+func (h *Handler) createAccount(w http.ResponseWriter, r *http.Request) {
+	var input service.CreateAccountInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateAccount(r.Context(), input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) accountDashboard(w http.ResponseWriter, r *http.Request, accountID string) {
+	value, err := h.service.AccountDashboard(r.Context(), accountID)
+	respond(w, value, err, http.StatusOK)
+}
+
+func (h *Handler) createProject(w http.ResponseWriter, r *http.Request, accountID string) {
+	var input service.CreateProjectInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateProject(r.Context(), accountID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) createAISystem(w http.ResponseWriter, r *http.Request, projectID string) {
+	var input service.CreateAISystemInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateAISystem(r.Context(), projectID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) createProjectConnection(w http.ResponseWriter, r *http.Request, projectID string) {
+	var input service.CreateConnectionInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateProjectConnection(r.Context(), projectID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) ingestProject(w http.ResponseWriter, r *http.Request) {
+	var input service.IngestInput
+	if !decode(w, r, &input) {
+		return
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	value, err := h.service.IngestProject(r.Context(), token, input)
+	respond(w, value, err, http.StatusAccepted)
+}
+
+func (h *Handler) revokeProjectConnection(w http.ResponseWriter, r *http.Request, connectionID string) {
+	value, err := h.service.RevokeProjectConnection(r.Context(), connectionID)
+	respond(w, value, err, http.StatusOK)
 }
 
 func (h *Handler) tools(w http.ResponseWriter) {
@@ -236,6 +306,10 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, service.ErrConflict):
 		status = http.StatusConflict
+	case errors.Is(err, store.ErrConflict):
+		status = http.StatusConflict
+	case errors.Is(err, service.ErrUnauthorized):
+		status = http.StatusUnauthorized
 	}
 	writeJSON(w, status, map[string]string{"error": err.Error()})
 }

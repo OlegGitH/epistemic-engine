@@ -48,6 +48,9 @@ const (
 
 type Run struct {
 	ID              string          `json:"id"`
+	AccountID       string          `json:"account_id,omitempty"`
+	ProjectID       string          `json:"project_id,omitempty"`
+	AISystemID      string          `json:"ai_system_id,omitempty"`
 	ExternalTraceID string          `json:"external_trace_id,omitempty"`
 	Title           string          `json:"title"`
 	Goal            string          `json:"goal,omitempty"`

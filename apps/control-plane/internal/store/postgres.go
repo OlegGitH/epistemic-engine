@@ -34,7 +34,7 @@ func (p *Postgres) CreateRun(ctx context.Context, run domain.Run, decision domai
 		return err
 	}
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, `INSERT INTO runs(id,external_trace_id,title,goal,source,recommendation,status,raw,created_at) VALUES($1,NULLIF($2,''),$3,$4,$5,$6,$7,$8,$9)`, run.ID, run.ExternalTraceID, run.Title, run.Goal, run.Source, run.Recommendation, run.Status, nullableJSON(run.Raw), run.CreatedAt)
+	_, err = tx.Exec(ctx, `INSERT INTO runs(id,account_id,project_id,ai_system_id,external_trace_id,title,goal,source,recommendation,status,raw,created_at) VALUES($1,NULLIF($2,''),NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,$7,$8,$9,$10,$11,$12)`, run.ID, run.AccountID, run.ProjectID, run.AISystemID, run.ExternalTraceID, run.Title, run.Goal, run.Source, run.Recommendation, run.Status, nullableJSON(run.Raw), run.CreatedAt)
 	if err != nil {
 		return err
 	}
@@ -47,13 +47,18 @@ func (p *Postgres) CreateRun(ctx context.Context, run domain.Run, decision domai
 	if err != nil {
 		return err
 	}
+	if run.AISystemID != "" {
+		if _, err = tx.Exec(ctx, `UPDATE ai_systems SET last_used_at=$2,updated_at=$2 WHERE id=$1`, run.AISystemID, run.CreatedAt); err != nil {
+			return err
+		}
+	}
 	return tx.Commit(ctx)
 }
 
 func (p *Postgres) GetRun(ctx context.Context, id string) (domain.Run, error) {
 	var run domain.Run
 	var raw []byte
-	err := p.pool.QueryRow(ctx, `SELECT id,COALESCE(external_trace_id,''),title,goal,source,recommendation,status,decision_id,raw,created_at FROM runs WHERE id=$1`, id).Scan(&run.ID, &run.ExternalTraceID, &run.Title, &run.Goal, &run.Source, &run.Recommendation, &run.Status, &run.DecisionID, &raw, &run.CreatedAt)
+	err := p.pool.QueryRow(ctx, `SELECT id,COALESCE(account_id,''),COALESCE(project_id,''),COALESCE(ai_system_id,''),COALESCE(external_trace_id,''),title,goal,source,recommendation,status,decision_id,raw,created_at FROM runs WHERE id=$1`, id).Scan(&run.ID, &run.AccountID, &run.ProjectID, &run.AISystemID, &run.ExternalTraceID, &run.Title, &run.Goal, &run.Source, &run.Recommendation, &run.Status, &run.DecisionID, &raw, &run.CreatedAt)
 	if err != nil {
 		return run, mapNotFound(err)
 	}

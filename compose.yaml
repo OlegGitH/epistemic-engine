@@ -10,6 +10,8 @@ services:
     volumes:
       - epistemic-pg:/var/lib/postgresql/data
       - ./db/migrations/000001_init.up.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./db/migrations/000002_portfolio.up.sql:/docker-entrypoint-initdb.d/002-portfolio.sql:ro
+      - ./db/migrations/000003_project_connections.up.sql:/docker-entrypoint-initdb.d/003-project-connections.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U epistemic -d epistemic"]
       interval: 5s

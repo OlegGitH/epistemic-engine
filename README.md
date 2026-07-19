@@ -17,6 +17,8 @@ The protocol core has no OpenAI, OpenTelemetry, PostgreSQL, or UI dependency. Th
 - Deterministic deployment policy and content-addressed Decision Certificates.
 - PostgreSQL persistence, Next.js/React Flow workspace, six golden scenarios, and an unsafe demo PR.
 - A vendor-neutral GitHub pipeline generator exposed through HTTP and MCP, with configured tool evidence feeding the Epistemic quality gate.
+- An account portfolio dashboard for projects, registered AI usage, knowledge health, certificate history, and evidence activity.
+- Project-scoped GitHub Actions connections that publish authenticated reports and proof-verified certificates into the dashboard.
 
 ## Repository map
 
@@ -31,7 +33,7 @@ conformance/              Protocol/provider suites and portable fixtures
 examples/                 Cross-domain examples and alternate server
 agents/demo-agent/       Python Agents SDK reviewer, HITL pause/resume, trace processor
 apps/control-plane/      Go Engine plus its OpenAPI contract, schemas, and examples
-apps/web/                One-screen Next.js decision workspace
+apps/web/                Account control center plus run-level decision debugger
 db/migrations/           PostgreSQL schema and versioned policy seed
 demo/                    Unsafe orders PR, corrected patch, recorded artifacts
 deploy/                  Deployment entry points
@@ -61,7 +63,7 @@ docker compose up --build
 
 This starts PostgreSQL on `5432`, the Go API on `8080`, and the workspace on `3000`. The API waits for PostgreSQL health and uses the durable repository whenever `DATABASE_URL` is set.
 
-Open the interactive API documentation at <http://localhost:8080/docs/>. To generate and install a reusable GitHub Actions quality gate, follow the [pipeline tool guide](docs/guides/github-actions-pipeline.md).
+Open the account control center at <http://localhost:3000> and the interactive API documentation at <http://localhost:8080/docs/>. See the [dashboard guide](docs/guides/account-dashboard.md) to register an account, projects, and AI usage. To generate and install a reusable GitHub Actions quality gate, follow the [pipeline tool guide](docs/guides/github-actions-pipeline.md).
 
 Seed a scenario in another terminal:
 
@@ -70,9 +72,15 @@ cd apps/control-plane
 go run ./cmd/seed --scenario unsafe
 ```
 
-Paste the printed run ID into <http://localhost:3000>. Available scenarios are `unsafe`, `pending`, and `corrected`.
+Open the run debugger at <http://localhost:3000/run> and paste the printed run ID. Available scenarios are `unsafe`, `pending`, and `corrected`.
 
 If an older database volume predates the current migration, recreate it once with `docker compose down -v` before starting the stack.
+
+## Deploy to Google Cloud
+
+The [GCP deployment package](deploy/gcp/README.md) builds the API and dashboard in Artifact Registry, provisions Cloud SQL and Secret Manager, runs versioned migrations through a Cloud Run Job, and deploys both services to Cloud Run. It also includes keyless GitHub OIDC setup and a bootstrap script that connects the Food Lens repository pipeline to the deployed dashboard.
+
+Deployment is manual by design because Cloud SQL and Cloud Run can create billable resources.
 
 ## Validate locally
 

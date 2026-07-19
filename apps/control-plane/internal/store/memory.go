@@ -10,6 +10,12 @@ import (
 
 type Memory struct {
 	mu            sync.RWMutex
+	accounts      map[string]domain.Account
+	projects      map[string]domain.Project
+	aiSystems     map[string]domain.AISystem
+	connections   map[string]domain.ProjectConnection
+	reports       map[string]domain.ProjectReport
+	publications  map[string]domain.PublishedCertificate
 	runs          map[string]domain.Run
 	decisions     map[string]domain.Decision
 	claims        map[string]domain.Claim
@@ -23,6 +29,8 @@ type Memory struct {
 
 func NewMemory() *Memory {
 	return &Memory{
+		accounts: map[string]domain.Account{}, projects: map[string]domain.Project{}, aiSystems: map[string]domain.AISystem{},
+		connections: map[string]domain.ProjectConnection{}, reports: map[string]domain.ProjectReport{}, publications: map[string]domain.PublishedCertificate{},
 		runs: map[string]domain.Run{}, decisions: map[string]domain.Decision{}, claims: map[string]domain.Claim{},
 		evidence: map[string]domain.Evidence{}, relations: map[string]domain.Relation{}, assumptions: map[string]domain.Assumption{},
 		unknowns: map[string]domain.Unknown{}, verifications: map[string]domain.Verification{}, certificates: map[string]domain.Certificate{},
@@ -34,6 +42,12 @@ func (m *Memory) CreateRun(_ context.Context, run domain.Run, decision domain.De
 	defer m.mu.Unlock()
 	m.runs[run.ID] = run
 	m.decisions[decision.ID] = decision
+	if system, ok := m.aiSystems[run.AISystemID]; ok {
+		usedAt := run.CreatedAt
+		system.LastUsedAt = &usedAt
+		system.UpdatedAt = run.CreatedAt
+		m.aiSystems[system.ID] = system
+	}
 	return nil
 }
 func (m *Memory) GetRun(_ context.Context, id string) (domain.Run, error) {
