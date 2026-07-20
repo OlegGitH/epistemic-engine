@@ -6,6 +6,32 @@ The protocol core has no OpenAI, OpenTelemetry, PostgreSQL, or UI dependency. Th
 
 > An agent may act only when its critical claims survive evidence, contradiction, and verification.
 
+## OpenAI Build Week 2026
+
+Epistemic Engine is a **Developer Tools** entry built during the July 13–21, 2026 submission period. It addresses a specific operational problem: AI agents can recommend consequential changes faster than teams can establish whether the assumptions behind those recommendations are actually supported.
+
+The Engine converts a recommendation into atomic claims, binds each claim to observable evidence, preserves contradictions and unknowns, permits only approval-bounded verification, applies deterministic policy, and emits a content-addressed Decision Certificate with a plain-language report.
+
+### How OpenAI technology is used
+
+- **GPT-5.6 through the Responses API** proposes a strict structured decomposition of a recommendation into 3–7 observable claims. Model output is treated as an untrusted proposal; it cannot approve an action or determine the final verdict.
+- **Codex SDK** creates one targeted verification test inside a disposable repository copy after explicit human approval. Network access is disabled, edits outside `tests/` are rejected, and the worker emits an unapplied patch plus its SHA-256 digest.
+- **Codex collaboration during development** accelerated the protocol and API scaffolding, conformance fixtures, PostgreSQL persistence, dashboard implementation, CI scenario matrix, GCP packaging, test generation, and UI/UX refinement. Human decisions defined the vendor-neutral boundary, deterministic policy ownership, privacy boundary, approval model, and product positioning.
+
+The dated commit history records the Build Week implementation. The [submission packet](docs/submission/README.md) distinguishes implementation evidence, judge instructions, the demo narrative, and final external items.
+
+### Fast judge path
+
+Supported platforms are Windows, macOS, and Linux with Docker Desktop and Docker Compose.
+
+```bash
+git clone https://github.com/OlegGitH/epistemic-engine.git
+cd epistemic-engine
+docker compose up --build
+```
+
+Open <http://localhost:3000>, seed a scenario with `cd apps/control-plane && go run ./cmd/seed --scenario unsafe`, and inspect the printed run ID at <http://localhost:3000/run>. The standalone [Food Lens demo](https://github.com/OlegGitH/epistemic-engine-demo) exercises supported, insufficient-evidence, contradicted, and bounded-verification paths in CI.
+
 ## What is implemented
 
 - Ordered, idempotent trace ingestion with correlation IDs and live SSE lifecycle events.
