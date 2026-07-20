@@ -26,7 +26,7 @@ tags:
   - name: System
     description: Service health and discovery.
 paths:
-  /healthz:
+  /health:
     get:
       tags: [System]
       operationId: health
@@ -36,7 +36,18 @@ paths:
           description: The service is ready to accept requests
           content:
             application/json:
-              example: { status: ok }
+              example: { status: ok, storage: postgresql, durable: true }
+  /healthz:
+    get:
+      tags: [System]
+      operationId: healthLegacy
+      summary: Check control-plane health using the legacy local path
+      responses:
+        '200':
+          description: The service is ready to accept requests
+          content:
+            application/json:
+              example: { status: ok, storage: postgresql, durable: true }
   /v1/accounts:
     post:
       tags: [Accounts]

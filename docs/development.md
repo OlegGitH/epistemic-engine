@@ -45,7 +45,7 @@ Without `DATABASE_URL`, the API uses the in-memory adapter for short-lived devel
 Verify the active backend before a persistence test:
 
 ```bash
-curl http://localhost:8080/healthz
+curl http://localhost:8080/health
 ```
 
 A durable response contains `{"status":"ok","storage":"postgresql","durable":true}`. Account-linked runs, claim/evidence state, decisions, proofs, and published certificates then survive API restarts.

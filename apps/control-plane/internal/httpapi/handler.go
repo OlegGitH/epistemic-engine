@@ -62,7 +62,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if serveDocumentation(w, r) {
 		return
 	}
-	if r.URL.Path == "/healthz" && r.Method == http.MethodGet {
+	if (r.URL.Path == "/health" || r.URL.Path == "/healthz") && r.Method == http.MethodGet {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "storage": h.storage, "durable": h.durable})
 		return
 	}

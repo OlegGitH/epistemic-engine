@@ -56,13 +56,15 @@ func TestVerifiedFlowRequiresApproval(t *testing.T) {
 
 func TestHealthReportsStorageDurability(t *testing.T) {
 	h := New(service.New(store.NewMemory(), analysis.NewRulesAnalyzer()), WithStorage("postgresql", true))
-	health := request[struct {
-		Status  string `json:"status"`
-		Storage string `json:"storage"`
-		Durable bool   `json:"durable"`
-	}](t, h, http.MethodGet, "/healthz", nil, http.StatusOK)
-	if health.Status != "ok" || health.Storage != "postgresql" || !health.Durable {
-		t.Fatalf("unexpected health payload: %+v", health)
+	for _, path := range []string{"/health", "/healthz"} {
+		health := request[struct {
+			Status  string `json:"status"`
+			Storage string `json:"storage"`
+			Durable bool   `json:"durable"`
+		}](t, h, http.MethodGet, path, nil, http.StatusOK)
+		if health.Status != "ok" || health.Storage != "postgresql" || !health.Durable {
+			t.Fatalf("unexpected health payload for %s: %+v", path, health)
+		}
 	}
 }
 
