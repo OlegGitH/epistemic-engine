@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/web/Dockerfile
+      - --build-arg
+      - NEXT_PUBLIC_CONTROL_PLANE_URL=${_CONTROL_PLANE_URL}
+      - -t
+      - ${_IMAGE}
+      - apps/web
+images: ["${_IMAGE}"]

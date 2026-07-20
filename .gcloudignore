@@ -1,0 +1,8 @@
+.git/
+.cache/
+temp/
+**/node_modules/
+**/.next/
+**/*.log
+**/coverage/
+**/.DS_Store

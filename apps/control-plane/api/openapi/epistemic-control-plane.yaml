@@ -11,6 +11,12 @@ servers:
   - url: /
     description: The control plane serving this document
 tags:
+  - name: Accounts
+    description: Account-level governance, portfolio health, and certification summaries.
+  - name: Projects
+    description: Projects and their registered AI systems.
+  - name: Integrations
+    description: Connect CI projects and ingest authenticated reports and certificates.
   - name: Tools
     description: Discover and invoke reusable Epistemic Engine tools.
   - name: Runs
@@ -31,6 +37,102 @@ paths:
           content:
             application/json:
               example: { status: ok }
+  /v1/accounts:
+    post:
+      tags: [Accounts]
+      operationId: createAccount
+      summary: Create an account workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAccount' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Account' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: Account slug already exists }
+  /v1/accounts/{accountId}/dashboard:
+    get:
+      tags: [Accounts]
+      operationId: getAccountDashboard
+      summary: Get project, AI usage, knowledge, and certification health for an account
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      responses:
+        '200': { description: Account portfolio, content: { application/json: { schema: { $ref: '#/components/schemas/AccountDashboard' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/accounts/{accountId}/projects:
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Register a project in an account
+      parameters: [ { $ref: '#/components/parameters/AccountId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProject' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Project' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/projects/{projectId}/ai-systems:
+    post:
+      tags: [Projects]
+      operationId: createAISystem
+      summary: Register an AI usage for a project
+      parameters: [ { $ref: '#/components/parameters/ProjectId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAISystem' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/AISystem' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /v1/projects/{projectId}/connections:
+    post:
+      tags: [Integrations]
+      operationId: createProjectConnection
+      summary: Create a project-scoped GitHub Actions ingest connection
+      description: Returns the plaintext ingest token once. Store it as a GitHub Actions secret.
+      parameters: [ { $ref: '#/components/parameters/ProjectId' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectConnection' }
+      responses:
+        '201': { description: Connection and one-time token, content: { application/json: { schema: { $ref: '#/components/schemas/CreateProjectConnectionResult' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: The project already has an active connection }
+  /v1/ingest:
+    post:
+      tags: [Integrations]
+      operationId: ingestProjectEvidence
+      summary: Publish a connected project's report and portable Decision Certificate
+      description: Authenticates the project token, verifies the certificate proof, and stores retries idempotently by external ID and certificate digest within the connected project.
+      security: [ { ProjectToken: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectIngest' }
+      responses:
+        '202': { description: Accepted, content: { application/json: { schema: { $ref: '#/components/schemas/IngestResult' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: Missing, invalid, or revoked project token }
+  /v1/connections/{connectionId}:
+    delete:
+      tags: [Integrations]
+      operationId: revokeProjectConnection
+      summary: Revoke a project ingest credential
+      parameters:
+        - name: connectionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Revoked connection, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectConnection' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
   /v1/tools:
     get:
       tags: [Tools]
@@ -188,13 +290,211 @@ paths:
         '200': { description: Certificate, content: { application/json: { schema: { $ref: '../schemas/decision-certificate.schema.json' } } } }
         '404': { $ref: '#/components/responses/NotFound' }
 components:
+  securitySchemes:
+    ProjectToken:
+      type: http
+      scheme: bearer
+      bearerFormat: epk project ingest token
   parameters:
+    AccountId: { name: accountId, in: path, required: true, schema: { type: string } }
+    ProjectId: { name: projectId, in: path, required: true, schema: { type: string } }
     RunId: { name: runId, in: path, required: true, schema: { type: string } }
     DecisionId: { name: decisionId, in: path, required: true, schema: { type: string } }
   responses:
     BadRequest: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
     NotFound: { description: Object not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   schemas:
+    CreateAccount:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        slug: { type: string }
+    Account:
+      type: object
+      required: [id, name, slug, created_at]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        created_at: { type: string, format: date-time }
+    CreateProject:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        slug: { type: string }
+        repository: { type: string }
+        owner: { type: string }
+    Project:
+      type: object
+      required: [id, account_id, name, slug, created_at]
+      properties:
+        id: { type: string }
+        account_id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        repository: { type: string }
+        owner: { type: string }
+        created_at: { type: string, format: date-time }
+    CreateAISystem:
+      type: object
+      additionalProperties: false
+      required: [name, provider, model, purpose]
+      properties:
+        name: { type: string, minLength: 1 }
+        provider: { type: string, minLength: 1 }
+        model: { type: string, minLength: 1 }
+        purpose: { type: string, minLength: 1 }
+        data_classes: { type: array, items: { type: string } }
+        tools: { type: array, items: { type: string } }
+        owner: { type: string }
+    AISystem:
+      type: object
+      required: [id, account_id, project_id, name, provider, model, purpose, data_classes, tools, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        account_id: { type: string }
+        project_id: { type: string }
+        name: { type: string }
+        provider: { type: string }
+        model: { type: string }
+        purpose: { type: string }
+        data_classes: { type: array, items: { type: string } }
+        tools: { type: array, items: { type: string } }
+        owner: { type: string }
+        status: { enum: [active, paused, retired] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time }
+    CreateProjectConnection:
+      type: object
+      additionalProperties: false
+      properties:
+        provider: { type: string, enum: [github-actions], default: github-actions }
+        repository: { type: string, description: GitHub owner/repository. Defaults to the registered project repository. }
+        endpoint: { type: string, format: uri, description: Public Control Center base URL embedded in the generated workflow step. }
+    ProjectConnection:
+      type: object
+      required: [id, account_id, project_id, provider, repository, status, token_prefix, created_at]
+      properties:
+        id: { type: string }
+        account_id: { type: string }
+        project_id: { type: string }
+        provider: { enum: [github-actions] }
+        repository: { type: string }
+        status: { enum: [active, revoked] }
+        token_prefix: { type: string }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+    CreateProjectConnectionResult:
+      type: object
+      required: [connection, token, workflow]
+      properties:
+        connection: { $ref: '#/components/schemas/ProjectConnection' }
+        token: { type: string, description: One-time plaintext token. It is never returned again. }
+        workflow: { type: string, description: GitHub Actions step configured for dashboard publishing. }
+    ProjectIngest:
+      type: object
+      additionalProperties: false
+      required: [external_id]
+      properties:
+        external_id: { type: string, minLength: 1, description: Stable workflow-run and attempt identity used for idempotency. }
+        ai_system_id: { type: string }
+        policy_version: { type: string }
+        context:
+          type: object
+          additionalProperties: false
+          properties:
+            repository: { type: string }
+            commit_sha: { type: string }
+            branch: { type: string }
+            workflow: { type: string }
+            run_url: { type: string, format: uri }
+        report:
+          type: object
+          required: [status]
+          properties:
+            tool: { type: string }
+            status: { enum: [passed, failed, error, pending, indeterminate] }
+            exit_code: { type: integer }
+            summary: { type: string }
+          additionalProperties: true
+        certificate:
+          type: object
+          description: Portable Epistemic Certificate. Its SHA-256 proof is verified before storage.
+    IngestResult:
+      type: object
+      required: [connection_id, project_id, status]
+      properties:
+        connection_id: { type: string }
+        project_id: { type: string }
+        report_id: { type: string }
+        certificate_id: { type: string }
+        status: { enum: [accepted] }
+    AccountDashboard:
+      type: object
+      required: [account, metrics, knowledge, projects, ai_systems, connections, reports, certificates, activity, generated_at]
+      properties:
+        account: { $ref: '#/components/schemas/Account' }
+        metrics:
+          type: object
+          required: [projects, connected_projects, ai_systems, reports, valid_certificates, attention_items, knowledge_coverage_pct]
+          properties:
+            projects: { type: integer }
+            connected_projects: { type: integer }
+            ai_systems: { type: integer }
+            reports: { type: integer }
+            valid_certificates: { type: integer }
+            attention_items: { type: integer }
+            knowledge_coverage_pct: { type: integer, minimum: 0, maximum: 100 }
+        knowledge:
+          type: object
+          required: [claims, supported_claims, contradicted_claims, evidence_artifacts, open_unknowns, stale_claims]
+          properties:
+            claims: { type: integer }
+            supported_claims: { type: integer }
+            contradicted_claims: { type: integer }
+            evidence_artifacts: { type: integer }
+            open_unknowns: { type: integer }
+            stale_claims: { type: integer }
+        projects:
+          type: array
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/Project' }
+              - type: object
+                properties:
+                  runs: { type: integer }
+                  reports: { type: integer }
+                  ai_systems: { type: integer }
+                  claims: { type: integer }
+                  supported_claims: { type: integer }
+                  evidence_artifacts: { type: integer }
+                  open_unknowns: { type: integer }
+                  knowledge_coverage_pct: { type: integer }
+                  certification_status: { enum: [valid, blocked, pending, uncertified] }
+                  connection_status: { enum: [active, revoked, disconnected] }
+                  latest_run_id: { type: string }
+                  last_activity_at: { type: string, format: date-time }
+        ai_systems:
+          type: array
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/AISystem' }
+              - type: object
+                properties:
+                  project_name: { type: string }
+                  certification_status: { enum: [valid, blocked, pending, uncertified] }
+                  certificate_digest: { type: string }
+                  last_evaluated_at: { type: string, format: date-time }
+        connections: { type: array, items: { $ref: '#/components/schemas/ProjectConnection' } }
+        reports: { type: array, items: { type: object } }
+        certificates: { type: array, items: { type: object } }
+        activity: { type: array, items: { type: object } }
+        generated_at: { type: string, format: date-time }
     Tool:
       type: object
       required: [id, name, description, provider, capabilities]
@@ -249,6 +549,9 @@ components:
       additionalProperties: false
       required: [recommendation]
       properties:
+        account_id: { type: string }
+        project_id: { type: string }
+        ai_system_id: { type: string }
         external_trace_id: { type: string }
         title: { type: string }
         goal: { type: string }
@@ -263,6 +566,9 @@ components:
       required: [id, title, goal, source, recommendation, status, decision_id, events, created_at]
       properties:
         id: { type: string }
+        account_id: { type: string }
+        project_id: { type: string }
+        ai_system_id: { type: string }
         external_trace_id: { type: string }
         title: { type: string }
         goal: { type: string }

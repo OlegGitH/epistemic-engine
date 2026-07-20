@@ -3,8 +3,8 @@ import "@xyflow/react/dist/style.css";
 import "./styles.css";
 
 export const metadata: Metadata = {
-  title: "Epistemic Debugger",
-  description: "Deployment decisions that survive evidence and verification.",
+  title: "Epistemic Control Center",
+  description: "Account-level AI knowledge, assurance, and certification.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

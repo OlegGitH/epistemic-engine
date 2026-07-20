@@ -18,11 +18,28 @@ import (
 type Handler struct {
 	service  *service.Service
 	protocol *protocolState
+	storage  string
+	durable  bool
 }
 
 var requestCounter atomic.Uint64
 
-func New(s *service.Service) http.Handler { return &Handler{service: s, protocol: newProtocolState()} }
+type Option func(*Handler)
+
+func WithStorage(storage string, durable bool) Option {
+	return func(handler *Handler) {
+		handler.storage = storage
+		handler.durable = durable
+	}
+}
+
+func New(s *service.Service, options ...Option) http.Handler {
+	handler := &Handler{service: s, protocol: newProtocolState(), storage: "memory"}
+	for _, option := range options {
+		option(handler)
+	}
+	return handler
+}
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	started := time.Now()
@@ -35,9 +52,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf(`{"level":"info","message":"http_request","correlation_id":%q,"method":%q,"path":%q,"duration_ms":%d}`, correlationID, r.Method, r.URL.Path, time.Since(started).Milliseconds())
 	}()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Correlation-ID, Epistemic-Context")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Correlation-ID, Epistemic-Context")
 	w.Header().Set("Access-Control-Expose-Headers", "X-Correlation-ID, Epistemic-Context")
-	w.Header().Set("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "DELETE,GET,POST,OPTIONS")
 	if r.Method == http.MethodOptions {
 		w.WriteHeader(http.StatusNoContent)
 		return
@@ -46,7 +63,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.URL.Path == "/healthz" && r.Method == http.MethodGet {
-		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "storage": h.storage, "durable": h.durable})
 		return
 	}
 	if r.URL.Path == "/.well-known/epistemic" && r.Method == http.MethodGet {
@@ -60,6 +77,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch {
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "accounts":
+		h.createAccount(w, r)
+	case r.Method == http.MethodGet && len(parts) == 4 && parts[1] == "accounts" && parts[3] == "dashboard":
+		h.accountDashboard(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "accounts" && parts[3] == "projects":
+		h.createProject(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "projects" && parts[3] == "ai-systems":
+		h.createAISystem(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "projects" && parts[3] == "connections":
+		h.createProjectConnection(w, r, parts[2])
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "ingest":
+		h.ingestProject(w, r)
+	case r.Method == http.MethodDelete && len(parts) == 3 && parts[1] == "connections":
+		h.revokeProjectConnection(w, r, parts[2])
 	case r.Method == http.MethodGet && len(parts) == 2 && parts[1] == "tools":
 		h.tools(w)
 	case r.Method == http.MethodPost && len(parts) == 4 && parts[1] == "tools" && parts[2] == "github-actions" && parts[3] == "pipelines":
@@ -100,9 +131,67 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			h.certificate(w, r, parts[2])
 		}
+	case len(parts) == 5 && parts[1] == "decisions" && parts[3] == "certificate" && parts[4] == "report" && r.Method == http.MethodGet:
+		h.certificateReport(w, r, parts[2])
 	default:
 		notFound(w)
 	}
+}
+
+func (h *Handler) createAccount(w http.ResponseWriter, r *http.Request) {
+	var input service.CreateAccountInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateAccount(r.Context(), input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) accountDashboard(w http.ResponseWriter, r *http.Request, accountID string) {
+	value, err := h.service.AccountDashboard(r.Context(), accountID)
+	respond(w, value, err, http.StatusOK)
+}
+
+func (h *Handler) createProject(w http.ResponseWriter, r *http.Request, accountID string) {
+	var input service.CreateProjectInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateProject(r.Context(), accountID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) createAISystem(w http.ResponseWriter, r *http.Request, projectID string) {
+	var input service.CreateAISystemInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateAISystem(r.Context(), projectID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) createProjectConnection(w http.ResponseWriter, r *http.Request, projectID string) {
+	var input service.CreateConnectionInput
+	if !decode(w, r, &input) {
+		return
+	}
+	value, err := h.service.CreateProjectConnection(r.Context(), projectID, input)
+	respond(w, value, err, http.StatusCreated)
+}
+
+func (h *Handler) ingestProject(w http.ResponseWriter, r *http.Request) {
+	var input service.IngestInput
+	if !decode(w, r, &input) {
+		return
+	}
+	token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+	value, err := h.service.IngestProject(r.Context(), token, input)
+	respond(w, value, err, http.StatusAccepted)
+}
+
+func (h *Handler) revokeProjectConnection(w http.ResponseWriter, r *http.Request, connectionID string) {
+	value, err := h.service.RevokeProjectConnection(r.Context(), connectionID)
+	respond(w, value, err, http.StatusOK)
 }
 
 func (h *Handler) tools(w http.ResponseWriter) {
@@ -175,6 +264,21 @@ func (h *Handler) certificate(w http.ResponseWriter, r *http.Request, id string)
 	v, err := h.service.Certificate(r.Context(), id)
 	respond(w, v, err, http.StatusOK)
 }
+func (h *Handler) certificateReport(w http.ResponseWriter, r *http.Request, id string) {
+	v, err := h.service.CertificateReport(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if r.URL.Query().Get("format") == "markdown" {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="decision-report-%s.md"`, id))
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(v.Markdown))
+		return
+	}
+	writeJSON(w, http.StatusOK, v)
+}
 func (h *Handler) stream(w http.ResponseWriter, r *http.Request, id string) {
 	g, err := h.service.Graph(r.Context(), id)
 	if err != nil {
@@ -236,6 +340,10 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, service.ErrConflict):
 		status = http.StatusConflict
+	case errors.Is(err, store.ErrConflict):
+		status = http.StatusConflict
+	case errors.Is(err, service.ErrUnauthorized):
+		status = http.StatusUnauthorized
 	}
 	writeJSON(w, status, map[string]string{"error": err.Error()})
 }

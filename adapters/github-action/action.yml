@@ -9,6 +9,22 @@ inputs:
     description: Certificate artifact path from the configuration
     required: false
     default: .epistemic/certificate.json
+  report:
+    description: Optional project report to publish with the certificate
+    required: false
+    default: .epistemic/project-quality.json
+  endpoint:
+    description: Optional Epistemic Control Center base URL
+    required: false
+    default: ''
+  token:
+    description: Project-scoped ingest token stored as a GitHub Actions secret
+    required: false
+    default: ''
+  ai_system:
+    description: Optional registered AI system ID associated with this run
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -32,3 +48,13 @@ runs:
         name: epistemic-decision-certificate
         path: ${{ inputs.certificate }}
         if-no-files-found: error
+    - name: Publish report and certificate to Epistemic Control Center
+      if: always() && inputs.endpoint != '' && inputs.token != '' && hashFiles(inputs.certificate) != ''
+      shell: bash
+      env:
+        EPISTEMIC_ENDPOINT: ${{ inputs.endpoint }}
+        EPISTEMIC_INGEST_TOKEN: ${{ inputs.token }}
+        EPISTEMIC_CERTIFICATE_PATH: ${{ inputs.certificate }}
+        EPISTEMIC_REPORT_PATH: ${{ inputs.report }}
+        EPISTEMIC_AI_SYSTEM_ID: ${{ inputs.ai_system }}
+      run: node "$GITHUB_ACTION_PATH/publish.mjs"

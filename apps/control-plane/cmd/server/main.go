@@ -30,6 +30,7 @@ func main() {
 		analyzer = analysis.NewOpenAIAnalyzer(key, env("OPENAI_MODEL", "gpt-5.6"))
 	}
 	var repo store.Repository = store.NewMemory()
+	storageBackend, durableStorage := "memory", false
 	if databaseURL := os.Getenv("DATABASE_URL"); databaseURL != "" {
 		postgres, err := store.NewPostgres(context.Background(), databaseURL)
 		if err != nil {
@@ -37,6 +38,9 @@ func main() {
 		}
 		defer postgres.Close()
 		repo = postgres
+		storageBackend, durableStorage = "postgresql", true
+	} else if env("REQUIRE_DURABLE_STORAGE", "false") == "true" {
+		log.Fatal("DATABASE_URL is required when REQUIRE_DURABLE_STORAGE=true")
 	}
 	var executor verification.Runner = verification.DisabledRunner{}
 	if env("EXECUTION_MODE", "recorded") == "docker" {
@@ -44,9 +48,9 @@ func main() {
 		executor = verification.NewDockerRunner(env("VERIFICATION_ROOT", "../../demo"), images...)
 	}
 	svc := service.New(repo, analyzer, service.WithExecutor(executor))
-	server := &http.Server{Addr: addr, Handler: httpapi.New(svc), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 0, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: addr, Handler: httpapi.New(svc, httpapi.WithStorage(storageBackend, durableStorage)), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 0, IdleTimeout: 60 * time.Second}
 	go func() {
-		log.Printf("epistemic control plane listening on %s (analyzer=%s)", addr, mode)
+		log.Printf("epistemic control plane listening on %s (analyzer=%s storage=%s durable=%t)", addr, mode, storageBackend, durableStorage)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal(err)
 		}

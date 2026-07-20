@@ -54,7 +54,12 @@ jobs:
       - name: Validate database migration
         env:
           PGPASSWORD: epistemic
-        run: psql -h localhost -U epistemic -d epistemic -v ON_ERROR_STOP=1 -f db/migrations/000001_init.up.sql
+        shell: bash
+        run: |
+          set -euo pipefail
+          for migration in db/migrations/*.up.sql; do
+            psql -h localhost -U epistemic -d epistemic -v ON_ERROR_STOP=1 -f "$migration"
+          done
       - name: Test control plane
         working-directory: apps/control-plane
         env:

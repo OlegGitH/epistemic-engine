@@ -5,6 +5,8 @@ RUN npm install
 
 FROM node:24-alpine AS build
 WORKDIR /app
+ARG NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:8080
+ENV NEXT_PUBLIC_CONTROL_PLANE_URL=$NEXT_PUBLIC_CONTROL_PLANE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

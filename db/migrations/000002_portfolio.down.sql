@@ -1,0 +1,11 @@
+BEGIN;
+DROP INDEX IF EXISTS runs_ai_system_idx;
+DROP INDEX IF EXISTS runs_project_idx;
+DROP INDEX IF EXISTS runs_account_idx;
+ALTER TABLE runs DROP COLUMN IF EXISTS ai_system_id;
+ALTER TABLE runs DROP COLUMN IF EXISTS project_id;
+ALTER TABLE runs DROP COLUMN IF EXISTS account_id;
+DROP TABLE IF EXISTS ai_systems;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS accounts;
+COMMIT;

@@ -40,7 +40,24 @@ go run ./cmd/seed --scenario unsafe
 go run ./cmd/seed --scenario pending
 ```
 
-Without `DATABASE_URL`, the API uses the in-memory adapter. The Compose stack sets `DATABASE_URL` and therefore uses PostgreSQL.
+Without `DATABASE_URL`, the API uses the in-memory adapter for short-lived development. Set `REQUIRE_DURABLE_STORAGE=true` to make startup fail instead of silently accepting that fallback. The Compose and GCP deployment paths set both `DATABASE_URL` and `REQUIRE_DURABLE_STORAGE=true`.
+
+Verify the active backend before a persistence test:
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+A durable response contains `{"status":"ok","storage":"postgresql","durable":true}`. Account-linked runs, claim/evidence state, decisions, proofs, and published certificates then survive API restarts.
+
+The portable CLI can write a human-readable companion to its immutable JSON certificate:
+
+```yaml
+outputs:
+  result: .epistemic/result.json
+  certificate: .epistemic/certificate.json
+  report: .epistemic/certificate-report.md
+```
 
 ## Analyzer modes
 
