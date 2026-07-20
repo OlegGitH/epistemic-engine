@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import "./portfolio.css";
 
 type Account = { id: string; name: string; slug: string; created_at: string };
 type Metrics = { projects: number; connected_projects: number; ai_systems: number; reports: number; valid_certificates: number; attention_items: number; knowledge_coverage_pct: number };
@@ -54,13 +55,33 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-	const sharedAccount = new URLSearchParams(window.location.search).get("account") ?? "";
+    const params = new URLSearchParams(window.location.search);
+    const sharedAccount = params.get("account") ?? "";
+    const requestedTab = params.get("view");
+    if (isTab(requestedTab)) setTab(requestedTab);
     const saved = sharedAccount || CONFIGURED_ACCOUNT || localStorage.getItem("epistemic-account-id") || "";
     if (saved) {
       setAccountId(saved);
       void load(saved);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const syncTabFromHistory = () => {
+      const requestedTab = new URLSearchParams(window.location.search).get("view");
+      setTab(isTab(requestedTab) ? requestedTab : "overview");
+    };
+    window.addEventListener("popstate", syncTabFromHistory);
+    return () => window.removeEventListener("popstate", syncTabFromHistory);
+  }, []);
+
+  function selectTab(nextTab: Tab) {
+    setTab(nextTab);
+    const url = new URL(window.location.href);
+    if (nextTab === "overview") url.searchParams.delete("view");
+    else url.searchParams.set("view", nextTab);
+    window.history.pushState(null, "", url);
+  }
 
   async function createWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -166,13 +187,15 @@ export default function DashboardPage() {
     <BrandBar accountName={dashboard.account.name} onSwitch={() => { setDashboard(null); setDialog("workspace"); }} />
     <div className="appFrame">
       <aside className="sidebar">
-        <nav>{(["overview","projects","ai","reports","certificates","knowledge"] as Tab[]).map(item => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><Icon name={item}/><span>{tabLabel(item)}</span>{item === "reports" && dashboard.reports.length > 0 && <em>{dashboard.reports.length}</em>}{item === "certificates" && dashboard.certificates.length > 0 && <em>{dashboard.certificates.length}</em>}</button>)}</nav>
+        <nav aria-label="Control Center sections">{(["overview","projects","ai","reports","certificates","knowledge"] as Tab[]).map(item => <button key={item} className={tab === item ? "active" : ""} aria-current={tab === item ? "page" : undefined} onClick={() => selectTab(item)}><Icon name={item}/><span>{tabLabel(item)}</span>{item === "reports" && dashboard.reports.length > 0 && <em>{dashboard.reports.length}</em>}{item === "certificates" && dashboard.certificates.length > 0 && <em>{dashboard.certificates.length}</em>}</button>)}</nav>
         <div className="sidebarBottom"><Link href="/run"><Icon name="debug"/><span>Run debugger</span></Link><a href={`${API}/docs`} target="_blank" rel="noreferrer"><Icon name="docs"/><span>API reference</span></a></div>
       </aside>
 
       <section className="content">
-        <header className="pageHeader"><div><p className="eyebrow">{tab === "overview" ? "Account intelligence" : tabLabel(tab)}</p><h1>{headline(tab)}</h1><p>{subheadline(tab)}</p></div><div className="headerActions"><button className="secondaryButton" onClick={() => void load()} disabled={loading}>{loading ? "Refreshing…" : "Refresh data"}</button><button className="secondaryButton" onClick={() => { setConnectionSetup(null); setDialog("connect"); }} disabled={!dashboard.projects.some(project => project.connection_status !== "active")}>Connect project</button><button className="primary" onClick={() => setDialog("project")}>Register project</button></div></header>
+        <header className="pageHeader"><div><p className="eyebrow">{tab === "overview" ? "Account overview" : tabLabel(tab)}</p><h1>{headline(tab)}</h1><p>{subheadline(tab)}</p></div><div className="headerActions"><button className="secondaryButton" onClick={() => void load()} disabled={loading}>{loading ? "Refreshing…" : "Refresh"}</button><button className="secondaryButton" onClick={() => { setConnectionSetup(null); setDialog("connect"); }} disabled={!dashboard.projects.some(project => project.connection_status !== "active")}>Connect CI</button><button className="primary" onClick={() => setDialog("project")}>Add project</button></div></header>
         {error && <p className="errorBanner">{error}</p>}
+
+        {tab === "overview" && <ActionCenter dashboard={dashboard} onNavigate={selectTab} onConnect={() => { setConnectionSetup(null); setDialog("connect"); }} />}
 
         {(tab === "overview" || tab === "knowledge") && <section className="metricGrid fiveMetrics">
           <MetricCard label="Knowledge coverage" value={`${metrics.knowledge_coverage_pct}%`} detail={`${knowledge.supported_claims} of ${knowledge.claims} claims supported`} tone="violet"/>
@@ -184,12 +207,12 @@ export default function DashboardPage() {
 
         {tab === "overview" && <>
           <section className="overviewGrid">
-            <Panel title="Project assurance" action={<button className="textButton" onClick={() => setTab("projects")}>View all projects →</button>}><ProjectTable projects={dashboard.projects.slice(0,5)}/></Panel>
+            <Panel title="Project assurance" action={<button className="textButton" onClick={() => selectTab("projects")}>View all projects →</button>}><ProjectTable projects={dashboard.projects.slice(0,5)}/></Panel>
             <Panel title="Knowledge health" action={<span className="liveDot">Live account view</span>}><KnowledgeChart knowledge={knowledge} coverage={metrics.knowledge_coverage_pct}/></Panel>
           </section>
           <section className="overviewGrid lowerOverview">
             <Panel title="AI certification register" action={<button className="textButton" onClick={() => setDialog("ai")}>+ Register AI usage</button>}><AIList systems={dashboard.ai_systems.slice(0,4)}/></Panel>
-            <Panel title="Latest connected reports" action={<button className="textButton" onClick={() => setTab("reports")}>View report ledger →</button>}><ReportList reports={dashboard.reports.slice(0,5)}/></Panel>
+            <Panel title="Latest connected reports" action={<button className="textButton" onClick={() => selectTab("reports")}>View report ledger →</button>}><ReportList reports={dashboard.reports.slice(0,5)}/></Panel>
           </section>
           <Panel title="Recent evidence activity" action={<span className="panelMeta">Latest 12 events</span>}><ActivityList activity={dashboard.activity.slice(0,6)}/></Panel>
         </>}
@@ -208,10 +231,18 @@ export default function DashboardPage() {
   </main>;
 }
 
-function BrandBar({accountName,onSwitch}:{accountName:string;onSwitch:()=>void}) { return <header className="brandBar"><Link href="/" className="brand"><span className="brandGlyph">E</span><span><b>Epistemic</b><small>Control center</small></span></Link><div className="accountArea"><button className="accountSwitch" onClick={onSwitch}><span className="accountAvatar">{accountName[0]?.toUpperCase() ?? "E"}</span><span><small>Workspace</small><b>{accountName}</b></span><i>⌄</i></button><span className="divider"/><button className="iconButton" title="Notifications"><Icon name="bell"/></button><span className="userAvatar">OA</span></div></header> }
+function BrandBar({accountName,onSwitch}:{accountName:string;onSwitch:()=>void}) { return <header className="brandBar"><Link href="/" className="brand"><span className="brandGlyph">E</span><span><b>Epistemic</b><small>Control center</small></span></Link><div className="accountArea"><button className="accountSwitch" aria-label={`Switch workspace. Current workspace: ${accountName}`} onClick={onSwitch}><span className="accountAvatar">{accountName[0]?.toUpperCase() ?? "E"}</span><span><small>Workspace</small><b>{accountName}</b></span><i aria-hidden="true">⌄</i></button></div></header> }
 function MetricCard({label,value,detail,tone}:{label:string;value:string;detail:string;tone:string}) { return <article className={`metricCard ${tone}`}><div><span>{label}</span><Icon name={tone}/></div><strong>{value}</strong><p>{detail}</p><i className="metricLine"/></article> }
 function Panel({title,action,children}:{title:string;action?:ReactNode;children:ReactNode}) { return <section className="panel"><header><h2>{title}</h2>{action}</header>{children}</section> }
 function StatusPill({status}:{status:Status}) { return <span className={`statusPill ${status}`}><i/>{status}</span> }
+
+function ActionCenter({dashboard,onNavigate,onConnect}:{dashboard:Dashboard;onNavigate:(tab:Tab)=>void;onConnect:()=>void}) {
+  const disconnected = dashboard.projects.filter(project => project.connection_status !== "active").length;
+  const uncertified = dashboard.ai_systems.filter(system => system.certification_status !== "valid").length;
+  const attention = dashboard.metrics.attention_items;
+  const clear = disconnected === 0 && uncertified === 0 && attention === 0;
+  return <section className={`actionCenter ${clear ? "clear" : "needsAction"}`} aria-labelledby="action-center-title"><div className="actionCenterIntro"><span>{clear ? "✓" : "!"}</span><div><p className="eyebrow">Recommended next step</p><h2 id="action-center-title">{clear ? "Your portfolio is ready for review" : "Focus on the items that can change a decision"}</h2><p>{clear ? "Projects are connected and current AI usage has valid certification." : "The Control Center has prioritized the shortest path to a clearer assurance state."}</p></div></div>{!clear && <div className="actionList">{attention > 0 && <button onClick={() => onNavigate("knowledge")}><b>Review evidence gaps</b><span>{attention} items need attention</span><i>→</i></button>}{uncertified > 0 && <button onClick={() => onNavigate("ai")}><b>Review uncertified AI usage</b><span>{uncertified} systems need a valid decision</span><i>→</i></button>}{disconnected > 0 && <button onClick={onConnect}><b>Connect project CI</b><span>{disconnected} projects cannot publish evidence</span><i>→</i></button>}</div>}</section>;
+}
 
 function ProjectTable({projects}:{projects:Project[]}) { if (!projects.length) return <Empty title="No projects registered" detail="Register a project to start collecting epistemic knowledge."/>; return <div className="dataTable projectTable"><div className="tableHead"><span>Project</span><span>Connection</span><span>Knowledge</span><span>Reports</span><span>Certificate</span><span>Last activity</span></div>{projects.map(project => <div className="tableRow" key={project.id}><span className="projectIdentity"><i>{initials(project.name)}</i><span><b>{project.name}</b><small>{project.repository || project.owner || "No repository connected"} · {project.ai_systems} AI systems</small></span></span><span><span className={`connectionPill ${project.connection_status}`}><i/>{project.connection_status}</span><small>{project.connection_status === "active" ? "Authenticated ingest" : "No CI publisher"}</small></span><span><b>{project.knowledge_coverage_pct}%</b><small>{project.supported_claims}/{project.claims} supported</small></span><span><b>{project.reports}</b><small>{project.runs} internal runs</small></span><span><StatusPill status={project.certification_status}/></span><span><b>{project.last_activity_at ? relativeTime(project.last_activity_at) : "—"}</b>{project.latest_run_id ? <Link href={`/run?run=${project.latest_run_id}`}>Inspect latest run →</Link> : <small>No runs</small>}</span></div>)}</div> }
 function AIList({systems}:{systems:AISystem[]}) { if (!systems.length) return <Empty title="No AI usage registered" detail="Declare each model usage before asking the Engine to certify it."/>; return <div className="compactList">{systems.map(system => <article key={system.id}><span className="providerMark">{system.provider.slice(0,2).toUpperCase()}</span><div><b>{system.name}</b><small>{system.project_name} · {system.provider} {system.model}</small></div><StatusPill status={system.certification_status}/></article>)}</div> }
@@ -225,7 +256,7 @@ function ActivityList({activity}:{activity:Activity[]}) { if (!activity.length) 
 function KnowledgeProjects({projects}:{projects:Project[]}) { if (!projects.length) return <Empty title="No project knowledge" detail="Evidence becomes reusable account knowledge after project runs are analyzed."/>; return <div className="knowledgeProjects">{projects.map(project => <article key={project.id}><div><b>{project.name}</b><span>{project.supported_claims} of {project.claims} claims supported</span></div><strong>{project.knowledge_coverage_pct}%</strong><i><span style={{width:`${project.knowledge_coverage_pct}%`}}/></i></article>)}</div> }
 function Empty({title,detail}:{title:string;detail:string}) { return <div className="emptyPanel"><span>◎</span><b>{title}</b><p>{detail}</p></div> }
 
-function Dialog({title,subtitle,onClose,children}:{title:string;subtitle:string;onClose:()=>void;children:ReactNode}) { return <div className="dialogBackdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}><section className="dialog"><header><div><h2>{title}</h2><p>{subtitle}</p></div><button className="dialogClose" onClick={onClose}>×</button></header>{children}</section></div> }
+function Dialog({title,subtitle,onClose,children}:{title:string;subtitle:string;onClose:()=>void;children:ReactNode}) { return <div className="dialogBackdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}><section className="dialog" role="dialog" aria-modal="true" aria-label={title}><header><div><h2>{title}</h2><p>{subtitle}</p></div><button className="dialogClose" aria-label="Close dialog" onClick={onClose}>×</button></header>{children}</section></div> }
 function ConnectionInstructions({setup}:{setup:ConnectionSetup}) { return <div className="connectionInstructions"><p className="successNotice">Connection created for <b>{setup.connection.repository}</b>. The token is shown only now.</p><label>GitHub secret: EPISTEMIC_INGEST_TOKEN<div className="copyField"><code>{setup.token}</code><button onClick={() => void navigator.clipboard.writeText(setup.token)}>Copy</button></div></label><label>Workflow step<div className="codeBlock"><pre>{setup.workflow}</pre><button onClick={() => void navigator.clipboard.writeText(setup.workflow)}>Copy YAML</button></div></label><p className="securityNote">Store the token as a GitHub Actions secret. Never commit it to the repository.</p></div> }
 function Field({label,name,placeholder,required=false}:{label:string;name:string;placeholder:string;required?:boolean}) { return <label>{label}<input name={name} placeholder={placeholder} required={required}/></label> }
 
@@ -236,6 +267,7 @@ function splitList(value: FormDataEntryValue | null) { return String(value ?? ""
 function message(reason: unknown) { return reason instanceof Error ? reason.message : "Request failed"; }
 function initials(value:string) { return value.split(/\s+/).slice(0,2).map(word => word[0]).join("").toUpperCase(); }
 function relativeTime(value:string) { const seconds=Math.round((new Date(value).getTime()-Date.now())/1000); const formatter=new Intl.RelativeTimeFormat("en",{numeric:"auto"}); const units:[Intl.RelativeTimeFormatUnit,number][]=[["year",31536000],["month",2592000],["day",86400],["hour",3600],["minute",60]]; for(const[unit,size]of units){if(Math.abs(seconds)>=size)return formatter.format(Math.round(seconds/size),unit)} return "just now"; }
-function tabLabel(tab:Tab) { return ({overview:"Overview",projects:"Projects",ai:"AI registry",reports:"Reports",certificates:"Certificates",knowledge:"Knowledge"})[tab]; }
-function headline(tab:Tab) { return ({overview:"Assurance at a glance",projects:"Project assurance",ai:"AI usage register",reports:"CI report ledger",certificates:"Certificate ledger",knowledge:"Epistemic knowledge"})[tab]; }
-function subheadline(tab:Tab) { return ({overview:"The evidence, AI usage, and certification posture of your account.",projects:"Every repository’s current knowledge and deployment confidence.",ai:"Declared models, purposes, data access, tools, and certification state.",reports:"Authenticated project checks, commits, workflows, and evidence summaries.",certificates:"Immutable decisions tied to evidence, policy, and a specific AI usage.",knowledge:"Claims, evidence, contradictions, and unknowns across all projects."})[tab]; }
+function isTab(value:string|null):value is Tab { return value !== null && ["overview","projects","ai","reports","certificates","knowledge"].includes(value); }
+function tabLabel(tab:Tab) { return ({overview:"Overview",projects:"Projects",ai:"AI systems",reports:"CI reports",certificates:"Decisions",knowledge:"Evidence health"})[tab]; }
+function headline(tab:Tab) { return ({overview:"What needs attention now",projects:"Projects and connections",ai:"Registered AI systems",reports:"Published CI evidence",certificates:"Decision history",knowledge:"Evidence health"})[tab]; }
+function subheadline(tab:Tab) { return ({overview:"See what is ready, what is blocked, and the next action to take.",projects:"Understand which repositories publish evidence and where assurance is incomplete.",ai:"Review each declared model purpose, data access, owner, and certification state.",reports:"Trace authenticated checks back to commits, workflows, and evidence summaries.",certificates:"Read human outcomes first, with immutable machine proof available for audit.",knowledge:"Find supported claims, contradictions, stale evidence, and unresolved unknowns."})[tab]; }
