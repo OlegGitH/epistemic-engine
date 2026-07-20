@@ -1,6 +1,6 @@
 # Codex verification worker
 
-This worker gives the official Codex SDK one approved, bounded verification specification. It copies the repository to a disposable workspace, disables network access, permits writes only inside that copy, rejects changes outside `tests/`, and emits a patch artifact without applying it.
+This worker gives the official Codex SDK one approved, bounded verification specification. It copies the repository to a disposable workspace, disables network access, permits writes only inside that copy, rejects changes outside `tests/`, enforces the requested test file when one is specified, and emits a patch artifact without applying it.
 
 ```bash
 npm install

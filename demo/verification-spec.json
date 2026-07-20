@@ -1,6 +1,6 @@
 {
-  "claim_id": "claim_compatibility",
-  "claim": "The change is backward-compatible with deployed interfaces and data.",
-  "check": "Add one regression test proving that the legacy processing status migrates to in_progress.",
-  "required_test": "tests/test_compatibility.py"
+  "claim_id": "claim_current_status_compatibility",
+  "claim": "Every currently supported persisted order status remains readable without changing its meaning.",
+  "check": "Add one table-driven regression test proving pending, in_progress, and completed each round-trip through migrate_status unchanged.",
+  "required_test": "tests/test_codex_status_migration.py"
 }

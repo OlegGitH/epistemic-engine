@@ -34,7 +34,7 @@ The Food Lens repository provides four intentionally different branch outcomes. 
 - [ ] Public Cloud Run dashboard URL
 - [ ] Public Cloud Run API health URL
 - [ ] Live GPT-5.6 proof artifact captured
-- [ ] Live Codex SDK proof artifact captured
+- [x] Live Codex SDK proof artifact captured
 - [ ] Public YouTube demo shorter than three minutes
 - [ ] Codex `/feedback` session ID
 - [ ] Devpost entry saved, reviewed, and submitted
@@ -91,6 +91,8 @@ GPT-5.6 is used at runtime through the Responses API to propose structured claim
 - `devpost-copy.md` — ready-to-paste project description
 - `video-script.md` — timed demo script
 - `live-proof.md` — credential-safe live GPT-5.6 and Codex proof procedure
+- `evidence/codex-proof-summary.json` — live bounded Codex SDK run metadata
+- `evidence/codex-verification.patch` — unapplied, test-only generated patch
 
 ## Final owner-only actions
 
