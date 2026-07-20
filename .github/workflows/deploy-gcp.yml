@@ -41,3 +41,19 @@ jobs:
           GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
           GCP_REGION: ${{ inputs.region }}
         run: bash deploy/gcp/deploy.sh
+      - name: Verify public deployment
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ inputs.region }}
+        run: |
+          CONTROL_PLANE_URL="$(gcloud run services describe epistemic-control-plane --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
+          DASHBOARD_URL="$(gcloud run services describe epistemic-dashboard --project "$GCP_PROJECT_ID" --region "$GCP_REGION" --format='value(status.url)')"
+          HEALTH="$(curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 20 "${CONTROL_PLANE_URL}/healthz")"
+          jq -e '.status == "ok" and .storage == "postgresql" and .durable == true' <<<"$HEALTH"
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 20 "$DASHBOARD_URL" >/dev/null
+          {
+            echo "### Deployed endpoints"
+            echo "- Control plane: ${CONTROL_PLANE_URL}"
+            echo "- Dashboard: ${DASHBOARD_URL}"
+            echo "- Storage: PostgreSQL (durable)"
+          } >> "$GITHUB_STEP_SUMMARY"
