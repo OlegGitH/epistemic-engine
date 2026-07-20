@@ -7,6 +7,7 @@
 - **Tagline:** Evidence before autonomous action.
 - **Repository:** https://github.com/OlegGitH/epistemic-engine
 - **Demo repository:** https://github.com/OlegGitH/epistemic-engine-demo
+- **Release:** https://github.com/OlegGitH/epistemic-engine/releases/tag/v0.2.0
 - **License:** MIT
 - **Supported platforms:** Windows, macOS, and Linux with Docker Desktop; the production package targets Google Cloud Run and Cloud SQL.
 
@@ -28,7 +29,8 @@ The Food Lens repository provides four intentionally different branch outcomes. 
 - [x] Official Codex SDK integration implemented
 - [x] Dated Build Week commit history
 - [x] Local application, protocol, database, dashboard, and branch-matrix tests
-- [ ] All Engine CI checks green on `main`
+- [x] All Engine CI checks green on `main`
+- [x] Demo application, full-scope, branch-scenario, and restart-persistence CI green
 - [ ] Public Cloud Run dashboard URL
 - [ ] Public Cloud Run API health URL
 - [ ] Live GPT-5.6 proof artifact captured
@@ -76,6 +78,10 @@ The human retained and made the consequential product decisions: what belongs in
 GPT-5.6 is used at runtime through the Responses API to propose structured claim decompositions. The separate Codex SDK worker may create only a bounded test patch after approval. Neither integration owns authorization or the final policy decision.
 
 ## Submission assets
+
+![Epistemic Control Center](assets/control-center.png)
+
+![Run-level evidence review](assets/decision-run.png)
 
 - `assets/control-center.png` — account and project portfolio
 - `assets/decision-run.png` — run-level evidence and claim inspection
