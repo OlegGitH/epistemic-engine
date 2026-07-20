@@ -1,8 +1,10 @@
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum* ./
-RUN go mod download
+COPY apps/control-plane/go.mod apps/control-plane/go.sum* ./apps/control-plane/
+RUN cd apps/control-plane && go mod download
 COPY . .
+WORKDIR /src/apps/control-plane
 RUN CGO_ENABLED=0 go build -o /out/control-plane ./cmd/server
 
 FROM gcr.io/distroless/static-debian12:nonroot
