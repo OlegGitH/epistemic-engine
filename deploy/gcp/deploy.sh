@@ -19,7 +19,8 @@ MIGRATE_IMAGE="${REGISTRY}/migrate:${TAG}"
 gcloud config set project "$GCP_PROJECT_ID" >/dev/null
 gcloud services enable artifactregistry.googleapis.com cloudbuild.googleapis.com run.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com iamcredentials.googleapis.com
 PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(projectNumber)')"
-CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+LEGACY_CLOUD_BUILD_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
+DEFAULT_COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
 
 if ! gcloud artifacts repositories describe "$REPOSITORY" --location "$REGION" >/dev/null 2>&1; then
   gcloud artifacts repositories create "$REPOSITORY" --repository-format docker --location "$REGION" --description "Epistemic Engine containers"
@@ -27,9 +28,26 @@ fi
 if ! gcloud iam service-accounts describe "$RUNTIME_SA" >/dev/null 2>&1; then
   gcloud iam service-accounts create "${PREFIX}-runtime" --display-name "Epistemic Cloud Run runtime"
 fi
+# IAM can briefly lag behind service-account creation on a new project.
+for attempt in {1..12}; do
+  if gcloud iam service-accounts describe "$RUNTIME_SA" >/dev/null 2>&1; then
+    break
+  fi
+  if [[ "$attempt" == 12 ]]; then
+    echo "Runtime service account did not become available: $RUNTIME_SA" >&2
+    exit 1
+  fi
+  sleep 5
+done
 for role in roles/cloudsql.client roles/secretmanager.secretAccessor; do
   gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" --member "serviceAccount:${RUNTIME_SA}" --role "$role" --quiet >/dev/null
 done
+
+if gcloud iam service-accounts describe "$LEGACY_CLOUD_BUILD_SA" >/dev/null 2>&1; then
+  CLOUD_BUILD_SA="$LEGACY_CLOUD_BUILD_SA"
+else
+  CLOUD_BUILD_SA="$DEFAULT_COMPUTE_SA"
+fi
 gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" --member "serviceAccount:${CLOUD_BUILD_SA}" --role roles/artifactregistry.writer --quiet >/dev/null
 
 if ! gcloud sql instances describe "$SQL_INSTANCE" >/dev/null 2>&1; then
