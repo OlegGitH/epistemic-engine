@@ -16,6 +16,10 @@ func NewRulesAnalyzer() *RulesAnalyzer { return &RulesAnalyzer{} }
 var emailPattern = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
 
 func (a *RulesAnalyzer) Analyze(_ context.Context, run domain.Run, decision domain.Decision) (domain.Analysis, error) {
+	if decision.ActionType == "code_change_review" {
+		return analyzeCodeChangeReview(run, decision)
+	}
+
 	evidence := evidenceFromEvents(run)
 	byKind := map[string][]domain.Evidence{}
 	for _, item := range evidence {

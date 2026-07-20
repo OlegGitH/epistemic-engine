@@ -20,7 +20,8 @@ services:
 
   control-plane:
     build:
-      context: ./apps/control-plane
+      context: .
+      dockerfile: apps/control-plane/Dockerfile
     environment:
       CONTROL_PLANE_ADDR: :8080
       DATABASE_URL: postgres://epistemic:epistemic@postgres:5432/epistemic?sslmode=disable

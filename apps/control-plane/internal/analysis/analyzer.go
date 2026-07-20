@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -32,6 +33,15 @@ func evidenceFromEvents(run domain.Run) []domain.Evidence {
 }
 
 func evidenceKind(eventType string, payload []byte) string {
+	var declared struct {
+		Kind string `json:"kind"`
+	}
+	if json.Unmarshal(payload, &declared) == nil {
+		switch declared.Kind {
+		case "build_result", "test_result", "migration", "code_diff", "log_output", "trace_output", "custom":
+			return declared.Kind
+		}
+	}
 	value := strings.ToLower(eventType + " " + string(payload))
 	switch {
 	case strings.Contains(value, "migration") || strings.Contains(value, "schema"):

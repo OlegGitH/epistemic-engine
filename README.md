@@ -38,6 +38,7 @@ Open <http://localhost:3000>, seed a scenario with `cd apps/control-plane && go 
 
 - Ordered, idempotent trace ingestion with correlation IDs and live SSE lifecycle events.
 - Deterministic local analysis plus an optional OpenAI Responses API Structured Outputs analyzer.
+- Requirement-level PR and text-change review that catches partial, missing, contradicted, and confidence-without-evidence outcomes.
 - Typed evidence for diffs, tests, builds, migrations, logs, and traces with SHA-256 content hashes.
 - Claim/evidence/contradiction graph, assumptions, unknowns, and explainable support dimensions.
 - Approval-gated verification planning, recorded fallback artifacts, and a restricted Docker runner.
@@ -134,4 +135,4 @@ The offline `rules` analyzer is the default. Set `ANALYZER_MODE=openai`, `OPENAI
 
 No hidden chain-of-thought is requested or stored. Model output is treated as a structured proposal; policy, permissions, hashes, persistence, and certificates remain application-owned.
 
-See the [protocol specification](specification/protocol.md), [protocol versus Engine boundary](docs/concepts/protocol-vs-engine.md), [architecture](docs/architecture.md), [development](docs/development.md), the [accepted Engine ADR](docs/adr/0001-epistemic-control-plane.md), the [protocol implementation record](docs/plans/2026-07-16-epistemic-protocol-implementation-plan.md), the [Protocol implementation report](docs/reports/2026-07-16-epistemic-protocol-implementation-report.md), the [Engine implementation report](docs/reports/2026-07-16-implementation-report.md), and the [Control Center UI/UX review](docs/reports/2026-07-20-ui-ux-review.md).
+See the [protocol specification](specification/protocol.md), [protocol versus Engine boundary](docs/concepts/protocol-vs-engine.md), [PR requirement coverage contract](docs/concepts/pr-requirement-coverage.md), [architecture](docs/architecture.md), [development](docs/development.md), the [accepted Engine ADR](docs/adr/0001-epistemic-control-plane.md), the [protocol implementation record](docs/plans/2026-07-16-epistemic-protocol-implementation-plan.md), the [Protocol implementation report](docs/reports/2026-07-16-epistemic-protocol-implementation-report.md), the [Engine implementation report](docs/reports/2026-07-16-implementation-report.md), and the [Control Center UI/UX review](docs/reports/2026-07-20-ui-ux-review.md).
