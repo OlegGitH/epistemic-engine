@@ -22,7 +22,7 @@ Epistemic Engine turns a recommendation into atomic observable claims, binds typ
 
 The dashboard gives operators two views of the same result: a detailed evidence graph for investigation and a plain-language report that says whether to proceed, why, what remains unresolved and how to verify the immutable certificate digest.
 
-Food Lens demonstrates the complete lifecycle. Its branch lab intentionally produces four outcomes: a supported release, insufficient evidence, a privacy contradiction and verification with remaining approval conditions. Each branch is successful only when the Engine reaches the expected result and persists it across a PostgreSQL restart.
+Food Lens demonstrates the complete lifecycle with two branch matrices. Four deployment branches cover a supported release, insufficient evidence, a privacy contradiction and bounded verification. Five PR-review branches cover complete, partial, missing, contradicted and confidence-only requirement assessments. Each branch is successful only when the Engine reaches the expected safety result and persists it across a PostgreSQL restart.
 
 ## How we built it
 
@@ -50,7 +50,7 @@ We also had to make blocked outcomes understandable. The same machine certificat
 - Deterministic policy and immutable certificates
 - Durable account, project, run and certificate state
 - Human-readable decision reports
-- Four branch-specific outcomes plus a full-scope CI harness
+- Nine branch-specific outcomes plus a full-scope CI harness
 - OpenAI Responses API and Codex SDK integrations with narrow authority
 - Complete local Docker stack and Google Cloud deployment package
 
@@ -67,5 +67,6 @@ Next we will add provider conformance certification, identity-aware production a
 - Source: https://github.com/OlegGitH/epistemic-engine
 - Food Lens demo: https://github.com/OlegGitH/epistemic-engine-demo
 - Live dashboard: https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf
+- Live GPT-5.6 PR review: https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_cb17e3c15b4bcb1c1dfc27f3
 - API health: https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health
 - Demo video: add after upload

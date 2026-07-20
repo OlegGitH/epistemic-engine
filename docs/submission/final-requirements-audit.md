@@ -95,6 +95,14 @@ The official challenge requires a working project built with Codex and GPT-5.6, 
 
 Each dedicated PR branch selects exactly one fixture through `epistemic-scenario.json`; `main` runs the complete matrix.
 
+All five dedicated branch workflows passed on 21 July 2026, including the PostgreSQL restart-persistence probe:
+
+- [fully covered CI](https://github.com/OlegGitH/epistemic-engine-demo/actions/runs/29785664692)
+- [partially covered CI](https://github.com/OlegGitH/epistemic-engine-demo/actions/runs/29785666763)
+- [missing coverage CI](https://github.com/OlegGitH/epistemic-engine-demo/actions/runs/29785667996)
+- [contradicted CI](https://github.com/OlegGitH/epistemic-engine-demo/actions/runs/29785670408)
+- [confidence-only CI](https://github.com/OlegGitH/epistemic-engine-demo/actions/runs/29785672214)
+
 ## Latest verified live evidence
 
 - Live OpenAI execution: `epistemic-pr-review-live-z7csc`, completed successfully in 1 minute 10 seconds.

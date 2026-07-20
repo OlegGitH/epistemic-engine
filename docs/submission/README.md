@@ -18,7 +18,7 @@
 
 In under five minutes, a judge can observe an AI-assisted deployment recommendation move through evidence ingestion, claim analysis, contradiction and unknown detection, bounded verification, deterministic policy, a machine-verifiable certificate, and a plain-English decision report.
 
-The Food Lens repository provides four intentionally different branch outcomes. A blocked outcome is a successful test when the Engine blocks it for the expected epistemic reason.
+The Food Lens repository provides two complementary matrices: four deployment-lifecycle branches and five PR requirement-coverage branches. A blocked outcome is a successful test when the Engine blocks it for the expected epistemic reason.
 
 ## Compliance checklist
 
