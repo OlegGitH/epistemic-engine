@@ -9,7 +9,7 @@ PROJECT_NUMBER="$(gcloud projects describe "$GCP_PROJECT_ID" --format='value(pro
 
 gcloud services enable iamcredentials.googleapis.com sts.googleapis.com
 gcloud iam service-accounts describe "${DEPLOYER}@${GCP_PROJECT_ID}.iam.gserviceaccount.com" >/dev/null 2>&1 || gcloud iam service-accounts create "$DEPLOYER" --display-name "Epistemic GitHub deployer"
-for role in roles/run.admin roles/cloudsql.admin roles/artifactregistry.admin roles/cloudbuild.builds.editor roles/secretmanager.admin roles/iam.serviceAccountAdmin roles/iam.serviceAccountUser roles/resourcemanager.projectIamAdmin roles/serviceusage.serviceUsageAdmin; do
+for role in roles/run.admin roles/cloudsql.admin roles/artifactregistry.admin roles/cloudbuild.builds.editor roles/storage.admin roles/secretmanager.admin roles/iam.serviceAccountAdmin roles/iam.serviceAccountUser roles/resourcemanager.projectIamAdmin roles/serviceusage.serviceUsageAdmin; do
   gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" --member "serviceAccount:${DEPLOYER}@${GCP_PROJECT_ID}.iam.gserviceaccount.com" --role "$role" --quiet >/dev/null
 done
 gcloud iam workload-identity-pools describe "$POOL" --location global >/dev/null 2>&1 || gcloud iam workload-identity-pools create "$POOL" --location global --display-name "GitHub Actions"
