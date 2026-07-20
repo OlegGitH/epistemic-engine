@@ -1,7 +1,7 @@
 import { Codex } from "@openai/codex-sdk";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { promisify } from "node:util";
@@ -42,7 +42,7 @@ async function main() {
       `Claim ID: ${specification.claim_id}`,
       `Claim: ${specification.claim}`,
       `Check: ${specification.check}`,
-      specification.required_test ? `Preferred test file: ${specification.required_test}` : "",
+      specification.required_test ? `Required test file: ${specification.required_test}. Create or update exactly this test file and no other file.` : "",
     ].filter(Boolean).join("\n");
 
     const codex = new Codex();
@@ -55,10 +55,25 @@ async function main() {
       ...(process.env.CODEX_MODEL ? { model: process.env.CODEX_MODEL } : {}),
     });
     const result = await thread.run(prompt);
+    await removeGeneratedTestArtifacts(join(copy, "tests"));
+    // Intent-to-add makes new files visible to diff without staging their contents.
+    // The checkout is disposable, and this lets the same scope checks cover both
+    // newly created tests and modifications to existing tests.
+    await git(copy, ["add", "--intent-to-add", "--all"]);
     const changed = (await git(copy, ["diff", "--name-only"])).stdout.split(/\r?\n/).filter(Boolean);
-    if (changed.length === 0) throw new Error("Codex did not create a verification patch");
+    if (changed.length === 0) {
+      const summary = result.finalResponse.trim().replace(/\s+/g, " ").slice(0, 500);
+      throw new Error(`Codex did not create a verification patch. Final response: ${summary || "(empty)"}`);
+    }
     if (changed.some((file) => file !== "tests" && !file.startsWith(`tests${sep}`) && !file.startsWith("tests/"))) {
       throw new Error(`Codex changed files outside tests/: ${changed.join(", ")}`);
+    }
+    if (specification.required_test) {
+      const required = specification.required_test.replaceAll("\\", "/");
+      const unexpected = changed.filter((file) => file.replaceAll("\\", "/") !== required);
+      if (unexpected.length > 0 || !changed.some((file) => file.replaceAll("\\", "/") === required)) {
+        throw new Error(`Codex must change only the required test file ${required}; changed: ${changed.join(", ")}`);
+      }
     }
     const patch = (await git(copy, ["diff", "--binary", "--", "tests"])).stdout;
     const patchHash = createHash("sha256").update(patch).digest("hex");
@@ -76,6 +91,25 @@ async function main() {
 
 async function git(cwd: string, args: string[]) {
   return run("git", args, { cwd, maxBuffer: 2 * 1024 * 1024 });
+}
+
+async function removeGeneratedTestArtifacts(root: string): Promise<void> {
+  let entries;
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory() && (entry.name === "__pycache__" || entry.name === ".pytest_cache")) {
+      await rm(path, { recursive: true, force: true });
+    } else if (entry.isDirectory()) {
+      await removeGeneratedTestArtifacts(path);
+    } else if (/\.(?:pyc|pyo)$/.test(entry.name)) {
+      await rm(path, { force: true });
+    }
+  }
 }
 
 function parseArgs(values: string[]) {
