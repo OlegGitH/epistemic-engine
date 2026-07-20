@@ -22,6 +22,8 @@ The dated commit history records the Build Week implementation. The [submission 
 
 ### Fast judge path
 
+Open the [live Food Lens submission dashboard](https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf). It contains five authenticated CI reports and proof-verified certificates covering supported release, insufficient evidence, privacy contradiction, and bounded verification. The [public API health check](https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health) confirms durable PostgreSQL storage.
+
 Supported platforms are Windows, macOS, and Linux with Docker Desktop and Docker Compose.
 
 ```bash

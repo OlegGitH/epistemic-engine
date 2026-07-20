@@ -7,7 +7,9 @@
 - **Tagline:** Evidence before autonomous action.
 - **Repository:** https://github.com/OlegGitH/epistemic-engine
 - **Demo repository:** https://github.com/OlegGitH/epistemic-engine-demo
-- **Release:** https://github.com/OlegGitH/epistemic-engine/releases/tag/v0.2.0
+- **Release:** https://github.com/OlegGitH/epistemic-engine/releases/tag/v0.2.1
+- **Live dashboard:** https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf
+- **API health:** https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health
 - **License:** MIT
 - **Supported platforms:** Windows, macOS, and Linux with Docker Desktop; the production package targets Google Cloud Run and Cloud SQL.
 
@@ -31,8 +33,8 @@ The Food Lens repository provides four intentionally different branch outcomes. 
 - [x] Local application, protocol, database, dashboard, and branch-matrix tests
 - [x] All Engine CI checks green on `main`
 - [x] Demo application, full-scope, branch-scenario, and restart-persistence CI green
-- [ ] Public Cloud Run dashboard URL
-- [ ] Public Cloud Run API health URL
+- [x] Public Cloud Run dashboard URL
+- [x] Public Cloud Run API health URL with durable PostgreSQL confirmation
 - [ ] Live GPT-5.6 proof artifact captured
 - [x] Live Codex SDK proof artifact captured
 - [ ] Public YouTube demo shorter than three minutes
@@ -43,7 +45,13 @@ The Food Lens repository provides four intentionally different branch outcomes. 
 
 ### Public demo
 
-Add the final Cloud Run URL here after deployment. The instance must remain available without charge or login through the judging period.
+1. Open the [Food Lens submission workspace](https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf). No login is required.
+2. Review **CI reports** for the five final GitHub workflow publications.
+3. Review **Decisions** for two actionable certificates and the intended indeterminate, blocked, and approval-pending outcomes.
+4. Open each report's GitHub workflow link to inspect the executable tests, Engine evaluation, PostgreSQL restart-persistence proof, and uploaded evidence.
+5. Confirm the API reports `durable: true` and `storage: postgresql` at the [public health endpoint](https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health).
+
+The submission workspace is intentionally clean: one account, one connected project, one registered AI system, five reports, and five certificates.
 
 ### Local fallback
 
@@ -98,7 +106,7 @@ GPT-5.6 is used at runtime through the Responses API to propose structured claim
 
 1. Confirm Devpost eligibility, registration, team membership, and representative.
 2. Set `OPENAI_API_KEY` locally and run the live proof; never commit the key.
-3. Confirm a billing-enabled GCP project before deploying billable Cloud Run and Cloud SQL resources.
+3. Keep the deployed GCP project available through the judging period and monitor its billing.
 4. Record and upload the public YouTube video.
 5. Run `/feedback` in the primary Codex project thread and paste the returned session ID into Devpost.
 6. Review all public links in a signed-out browser and submit before the deadline.

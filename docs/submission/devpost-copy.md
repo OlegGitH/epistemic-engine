@@ -66,5 +66,6 @@ Next we will add provider conformance certification, identity-aware production a
 
 - Source: https://github.com/OlegGitH/epistemic-engine
 - Food Lens demo: https://github.com/OlegGitH/epistemic-engine-demo
-- Live dashboard: add after deployment
+- Live dashboard: https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf
+- API health: https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health
 - Demo video: add after upload
