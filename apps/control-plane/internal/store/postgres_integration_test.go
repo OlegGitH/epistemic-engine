@@ -76,6 +76,13 @@ func TestPostgresRepositoryRoundTrip(t *testing.T) {
 	if len(graph.Run.Events) != 1 || len(graph.Claims) != 1 || graph.Claims[0].State != domain.ClaimExternallyVerified || len(graph.Verifications) != 1 || len(graph.Decision.ClaimIDs) != 1 {
 		t.Fatalf("unexpected graph: %+v", graph)
 	}
+	if graph.Assumptions == nil || graph.Unknowns == nil {
+		t.Fatalf("empty graph collections must serialize as arrays: %+v", graph)
+	}
+	emptyVerifications, err := repository.getVerifications(ctx, "decision-without-verifications")
+	if err != nil || emptyVerifications == nil {
+		t.Fatalf("empty verifications must be a non-nil array: values=%+v err=%v", emptyVerifications, err)
+	}
 	connection := domain.ProjectConnection{ID: "connection_postgres_test", AccountID: account.ID, ProjectID: project.ID, Provider: "github-actions", Repository: "example/project", Status: "active", TokenHash: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", TokenPrefix: "epk_example", CreatedAt: now}
 	if err = repository.CreateProjectConnection(ctx, connection); err != nil {
 		t.Fatal(err)

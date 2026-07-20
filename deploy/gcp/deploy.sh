@@ -60,7 +60,7 @@ else
 fi
 gcloud run jobs execute "${PREFIX}-migrate" --region "$REGION" --wait
 
-gcloud run deploy "${PREFIX}-control-plane" --region "$REGION" --image "$CONTROL_IMAGE" --service-account "$RUNTIME_SA" --add-cloudsql-instances "$CONNECTION_NAME" --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest" --set-env-vars "ANALYZER_MODE=rules,EXECUTION_MODE=recorded" --port 8080 --memory 512Mi --cpu 1 --min-instances 0 --max-instances 5 --timeout 3600 --allow-unauthenticated
+gcloud run deploy "${PREFIX}-control-plane" --region "$REGION" --image "$CONTROL_IMAGE" --service-account "$RUNTIME_SA" --add-cloudsql-instances "$CONNECTION_NAME" --set-secrets "DATABASE_URL=${DATABASE_SECRET}:latest" --set-env-vars "ANALYZER_MODE=rules,EXECUTION_MODE=recorded,REQUIRE_DURABLE_STORAGE=true" --port 8080 --memory 512Mi --cpu 1 --min-instances 0 --max-instances 5 --timeout 3600 --allow-unauthenticated
 CONTROL_PLANE_URL="$(gcloud run services describe "${PREFIX}-control-plane" --region "$REGION" --format='value(status.url)')"
 
 gcloud builds submit . --config deploy/gcp/cloudbuild-web.yaml --substitutions "_IMAGE=${WEB_IMAGE},_CONTROL_PLANE_URL=${CONTROL_PLANE_URL}"

@@ -77,6 +77,19 @@ GET /v1/accounts/ACCOUNT_ID/dashboard
 
 The original run-level claim graph remains available under **Run debugger** or at <http://localhost:3000/run>.
 
+## Read a decision certificate
+
+The run debugger presents a **Human Decision Report** before the immutable JSON certificate. Its top-level recommendation is intentionally explicit: **PROCEED** only when the policy permits action, otherwise **DO NOT PROCEED**. It includes the reason, approval state, evidence counts, critical-claim explanations, conditions, verification activity, and integrity digest.
+
+Retrieve the same report through the API:
+
+```http
+GET /v1/decisions/DECISION_ID/certificate/report
+GET /v1/decisions/DECISION_ID/certificate/report?format=markdown
+```
+
+The first form is structured JSON for UIs. The second is a downloadable Markdown report for CI artifacts, audit records, or review. Both are derived views; `GET /v1/decisions/DECISION_ID/certificate` remains the immutable machine source of truth.
+
 ## Connect GitHub Actions
 
 The dashboard can create a project-scoped connection token and a ready-to-paste workflow step. From the UI, choose **Connect project**. Through the API:
@@ -125,6 +138,8 @@ Publishing is optional. Without `endpoint` and `token`, the action continues to 
 ## PostgreSQL migration
 
 New installations apply `000001_init.up.sql`, `000002_portfolio.up.sql`, and `000003_project_connections.up.sql` automatically. For an existing database, apply both portfolio migrations with your normal migration process before starting the updated control plane.
+
+The account relationship is persisted on each run and flows through decisions and proofs. Portfolio reports and externally published certificates are also stored under their project/account relationship. Restarting the API does not change a certificate digest; the same account dashboard, run graph, and human report can be loaded after restart.
 
 ## Security boundary
 

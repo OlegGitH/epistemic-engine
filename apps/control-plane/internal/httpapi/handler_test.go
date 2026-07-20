@@ -42,6 +42,28 @@ func TestVerifiedFlowRequiresApproval(t *testing.T) {
 	if err != nil || digest != cert.Proof.Digest {
 		t.Fatalf("certificate proof is not reproducible: digest=%s err=%v", digest, err)
 	}
+	report := request[domain.HumanCertificateReport](t, h, http.MethodGet, "/v1/decisions/"+g.Decision.ID+"/certificate/report", nil, http.StatusOK)
+	if report.Decision != "PROCEED" || report.Counts.CriticalClaims != 4 || report.Counts.PassedVerifications != 2 || !strings.Contains(report.Markdown, cert.Proof.Digest) {
+		t.Fatalf("unexpected human certificate report: %+v", report)
+	}
+	markdownRequest := httptest.NewRequest(http.MethodGet, "/v1/decisions/"+g.Decision.ID+"/certificate/report?format=markdown", nil)
+	markdownResponse := httptest.NewRecorder()
+	h.ServeHTTP(markdownResponse, markdownRequest)
+	if markdownResponse.Code != http.StatusOK || !strings.HasPrefix(markdownResponse.Header().Get("Content-Type"), "text/markdown") || !strings.Contains(markdownResponse.Body.String(), "The proposed action is authorized") {
+		t.Fatalf("unexpected markdown report: status=%d headers=%v body=%s", markdownResponse.Code, markdownResponse.Header(), markdownResponse.Body.String())
+	}
+}
+
+func TestHealthReportsStorageDurability(t *testing.T) {
+	h := New(service.New(store.NewMemory(), analysis.NewRulesAnalyzer()), WithStorage("postgresql", true))
+	health := request[struct {
+		Status  string `json:"status"`
+		Storage string `json:"storage"`
+		Durable bool   `json:"durable"`
+	}](t, h, http.MethodGet, "/healthz", nil, http.StatusOK)
+	if health.Status != "ok" || health.Storage != "postgresql" || !health.Durable {
+		t.Fatalf("unexpected health payload: %+v", health)
+	}
 }
 
 func TestProductionVerificationIsRejected(t *testing.T) {

@@ -392,6 +392,127 @@ func (s *Service) Certificate(ctx context.Context, decisionID string) (domain.Ce
 	return s.repo.GetCertificate(ctx, decisionID)
 }
 
+func (s *Service) CertificateReport(ctx context.Context, decisionID string) (domain.HumanCertificateReport, error) {
+	certificate, err := s.repo.GetCertificate(ctx, decisionID)
+	if err != nil {
+		return domain.HumanCertificateReport{}, err
+	}
+	return buildCertificateReport(certificate), nil
+}
+
+func buildCertificateReport(certificate domain.Certificate) domain.HumanCertificateReport {
+	report := domain.HumanCertificateReport{
+		Version: "1.0", DecisionID: certificate.DecisionID, RunID: certificate.RunID,
+		Recommendation: certificate.Recommendation, Verdict: string(certificate.Verdict),
+		ActionAllowed: certificate.ActionAllowed, HumanApprovalRequired: true,
+		HumanApprovalGranted: certificate.HumanApproved, PolicyVersion: certificate.PolicyVersion,
+		IssuedAt: certificate.IssuedAt, Conditions: nonNil(certificate.Conditions),
+		Proof: certificate.Proof, CriticalClaims: []domain.CertificateReportClaim{},
+		Verifications: []domain.CertificateReportVerification{},
+	}
+	report.Counts.EvidenceArtifacts = len(certificate.ArtifactHashes)
+	for _, claim := range certificate.Claims {
+		if !claim.Critical {
+			continue
+		}
+		report.Counts.CriticalClaims++
+		switch claim.State {
+		case domain.ClaimSupported, domain.ClaimExternallyVerified:
+			report.Counts.SupportedClaims++
+		case domain.ClaimContradicted, domain.ClaimRejected:
+			report.Counts.ContradictedClaims++
+		default:
+			report.Counts.OpenClaims++
+		}
+		report.CriticalClaims = append(report.CriticalClaims, domain.CertificateReportClaim{
+			Statement: claim.Statement, State: string(claim.State), Assessment: humanClaimAssessment(claim.State),
+			SupportPercent: int(claim.Support.Value*100 + .5), EvidenceCount: len(claim.EvidenceIDs),
+			Required: nonNil(claim.RequiredEvidenceTypes),
+		})
+	}
+	for _, verification := range certificate.Verifications {
+		report.Counts.VerificationChecks++
+		if verification.Outcome == "passed" {
+			report.Counts.PassedVerifications++
+		}
+		report.Verifications = append(report.Verifications, domain.CertificateReportVerification{
+			Check: verification.Check, Kind: verification.Kind, Outcome: verification.Outcome,
+			Environment: verification.Environment, ApprovedBy: verification.ApprovedBy, ArtifactHash: verification.ArtifactHash,
+		})
+	}
+	report.Decision, report.Headline, report.Summary = humanDecisionSummary(certificate)
+	report.Markdown = renderCertificateReportMarkdown(report)
+	return report
+}
+
+func humanDecisionSummary(certificate domain.Certificate) (string, string, string) {
+	if certificate.ActionAllowed {
+		return "PROCEED", "The proposed action is authorized.", "Critical claims passed the policy gates and the required human approval was recorded."
+	}
+	switch certificate.Verdict {
+	case domain.VerdictVerified, domain.VerdictVerifiedWithConditions:
+		return "DO NOT PROCEED", "Evidence is sufficient, but authorization is incomplete.", "The evidence gates passed, but the consequential action remains blocked until human approval and every listed condition are satisfied."
+	case domain.VerdictContradicted:
+		return "DO NOT PROCEED", "Critical evidence contradicts the recommendation.", "At least one critical claim is contradicted. Human approval cannot override this evidence gate."
+	case domain.VerdictRejected:
+		return "DO NOT PROCEED", "A critical claim was rejected.", "The policy rejected at least one critical claim, so the proposed action is blocked."
+	default:
+		return "DO NOT PROCEED", "The decision does not have enough evidence.", "Critical evidence, verification, or unresolved unknowns remain incomplete."
+	}
+}
+
+func humanClaimAssessment(state domain.ClaimState) string {
+	switch state {
+	case domain.ClaimSupported:
+		return "Supported by the available evidence."
+	case domain.ClaimExternallyVerified:
+		return "Passed an approved bounded verification."
+	case domain.ClaimContradicted:
+		return "Contradicted by available evidence."
+	case domain.ClaimRejected:
+		return "Rejected by policy or review."
+	case domain.ClaimPartiallySupported:
+		return "Partially supported; additional evidence is required."
+	case domain.ClaimStale:
+		return "Evidence is stale and must be refreshed."
+	default:
+		return "Open; required evidence or verification is incomplete."
+	}
+}
+
+func renderCertificateReportMarkdown(report domain.HumanCertificateReport) string {
+	var output strings.Builder
+	fmt.Fprintf(&output, "# Epistemic Decision Report\n\n")
+	fmt.Fprintf(&output, "## %s — %s\n\n%s\n\n", report.Decision, report.Headline, report.Summary)
+	fmt.Fprintf(&output, "- **Recommendation:** %s\n", report.Recommendation)
+	fmt.Fprintf(&output, "- **Verdict:** %s\n- **Action allowed:** %t\n- **Human approval:** %t\n", report.Verdict, report.ActionAllowed, report.HumanApprovalGranted)
+	fmt.Fprintf(&output, "- **Policy:** %s\n- **Issued:** %s\n- **Decision ID:** `%s`\n- **Run ID:** `%s`\n\n", report.PolicyVersion, report.IssuedAt.Format(time.RFC3339), report.DecisionID, report.RunID)
+	fmt.Fprintf(&output, "## Evidence summary\n\n- Critical claims: %d\n- Supported or externally verified: %d\n- Contradicted or rejected: %d\n- Open: %d\n- Verification checks passed: %d/%d\n- Content-addressed artifacts: %d\n\n", report.Counts.CriticalClaims, report.Counts.SupportedClaims, report.Counts.ContradictedClaims, report.Counts.OpenClaims, report.Counts.PassedVerifications, report.Counts.VerificationChecks, report.Counts.EvidenceArtifacts)
+	fmt.Fprintln(&output, "## Critical claims")
+	for _, claim := range report.CriticalClaims {
+		fmt.Fprintf(&output, "\n- **%s** — %s (%d/100 support, %d bound evidence artifacts)\n  - %s\n", strings.ReplaceAll(claim.State, "_", " "), claim.Statement, claim.SupportPercent, claim.EvidenceCount, claim.Assessment)
+	}
+	if len(report.Conditions) > 0 {
+		fmt.Fprintln(&output, "\n## Conditions")
+		for _, condition := range report.Conditions {
+			fmt.Fprintf(&output, "\n- %s", condition)
+		}
+		fmt.Fprintln(&output)
+	}
+	if len(report.Verifications) > 0 {
+		fmt.Fprintln(&output, "\n## Verification record")
+		for _, verification := range report.Verifications {
+			fmt.Fprintf(&output, "\n- **%s:** %s (%s, %s)", verification.Outcome, verification.Check, verification.Kind, verification.Environment)
+			if verification.ArtifactHash != "" {
+				fmt.Fprintf(&output, " — `%s`", verification.ArtifactHash)
+			}
+		}
+		fmt.Fprintln(&output)
+	}
+	fmt.Fprintf(&output, "\n## Integrity proof\n\n- Algorithm: %s\n- Certificate digest: `%s`\n\nThis report is a human-readable view of the immutable machine certificate. The certificate JSON and its digest remain the source of truth.\n", report.Proof.Algorithm, report.Proof.Digest)
+	return output.String()
+}
+
 func (s *Service) Subscribe(runID string) (<-chan domain.LifecycleEvent, func()) {
 	return s.bus.Subscribe(runID)
 }

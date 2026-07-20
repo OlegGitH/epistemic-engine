@@ -56,7 +56,7 @@ func (p *Postgres) CreateRun(ctx context.Context, run domain.Run, decision domai
 }
 
 func (p *Postgres) GetRun(ctx context.Context, id string) (domain.Run, error) {
-	var run domain.Run
+	run := domain.Run{Events: []domain.Event{}}
 	var raw []byte
 	err := p.pool.QueryRow(ctx, `SELECT id,COALESCE(account_id,''),COALESCE(project_id,''),COALESCE(ai_system_id,''),COALESCE(external_trace_id,''),title,goal,source,recommendation,status,decision_id,raw,created_at FROM runs WHERE id=$1`, id).Scan(&run.ID, &run.AccountID, &run.ProjectID, &run.AISystemID, &run.ExternalTraceID, &run.Title, &run.Goal, &run.Source, &run.Recommendation, &run.Status, &run.DecisionID, &raw, &run.CreatedAt)
 	if err != nil {
@@ -205,7 +205,11 @@ func (p *Postgres) getDecision(ctx context.Context, id string) (domain.Decision,
 }
 
 func (p *Postgres) loadGraph(ctx context.Context, run domain.Run, decision domain.Decision) (domain.Graph, error) {
-	g := domain.Graph{Run: run, Decision: decision}
+	g := domain.Graph{
+		Run: run, Decision: decision,
+		Claims: []domain.Claim{}, Evidence: []domain.Evidence{}, Relations: []domain.Relation{},
+		Assumptions: []domain.Assumption{}, Unknowns: []domain.Unknown{}, Verifications: []domain.Verification{},
+	}
 	rows, err := p.pool.Query(ctx, `SELECT id,statement,importance,critical,scope_json,required_evidence_types,state,justification,support_score,created_at FROM claims WHERE decision_id=$1 ORDER BY id`, decision.ID)
 	if err != nil {
 		return g, err
@@ -326,7 +330,7 @@ func (p *Postgres) getVerifications(ctx context.Context, decisionID string) ([]d
 		return nil, err
 	}
 	defer rows.Close()
-	var values []domain.Verification
+	values := []domain.Verification{}
 	for rows.Next() {
 		var v domain.Verification
 		var spec, result []byte

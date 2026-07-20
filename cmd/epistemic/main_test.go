@@ -17,8 +17,9 @@ func TestEvaluateStableModesAndCertificate(t *testing.T) {
 		t.Fatal(err)
 	}
 	certificatePath := filepath.Join(directory, "certificate.json")
+	reportPath := filepath.Join(directory, "certificate-report.md")
 	configPath := filepath.Join(directory, ".epistemic.yaml")
-	configuration := "api_version: epistemic.dev/v1alpha1\nmode: enforce\ndecision:\n  id: cli-test\n  recommendation: safe\n  action_type: deploy\n  subject_type: repository\n  subject_id: fixture\nprovider:\n  type: local\nsources:\n  - type: junit\n    path: " + filepath.ToSlash(junitPath) + "\noutputs:\n  certificate: " + filepath.ToSlash(certificatePath) + "\n"
+	configuration := "api_version: epistemic.dev/v1alpha1\nmode: enforce\ndecision:\n  id: cli-test\n  recommendation: safe\n  action_type: deploy\n  subject_type: repository\n  subject_id: fixture\nprovider:\n  type: local\nsources:\n  - type: junit\n    path: " + filepath.ToSlash(junitPath) + "\noutputs:\n  certificate: " + filepath.ToSlash(certificatePath) + "\n  report: " + filepath.ToSlash(reportPath) + "\n"
 	if err := os.WriteFile(configPath, []byte(configuration), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -32,6 +33,10 @@ func TestEvaluateStableModesAndCertificate(t *testing.T) {
 	var certificate epistemic.Certificate
 	if err = json.Unmarshal(data, &certificate); err != nil {
 		t.Fatal(err)
+	}
+	report, err := os.ReadFile(reportPath)
+	if err != nil || !strings.Contains(string(report), "Epistemic Decision Report") || !strings.Contains(string(report), certificate.Proof.Digest) {
+		t.Fatalf("human report missing or incomplete: err=%v report=%s", err, report)
 	}
 	expected := certificate.Proof.Digest
 	certificate.Proof.Digest = ""

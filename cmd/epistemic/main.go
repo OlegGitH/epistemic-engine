@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -43,6 +44,7 @@ type config struct {
 	Outputs      struct {
 		Certificate string `yaml:"certificate"`
 		Result      string `yaml:"result"`
+		Report      string `yaml:"report"`
 	} `yaml:"outputs"`
 }
 
@@ -126,6 +128,15 @@ func evaluate(arguments []string) int {
 	}
 	if configuration.Outputs.Certificate != "" {
 		if err = writeJSON(configuration.Outputs.Certificate, result.Certificate); err != nil {
+			return fail(err)
+		}
+	}
+	if configuration.Outputs.Report != "" {
+		report, reportErr := epistemic.HumanReport(*result.Certificate)
+		if reportErr != nil {
+			return fail(reportErr)
+		}
+		if err = writeText(configuration.Outputs.Report, report); err != nil {
 			return fail(err)
 		}
 	}
@@ -219,6 +230,15 @@ func writeJSON(path string, value any) error {
 		return err
 	}
 	return os.WriteFile(path, append(data, '\n'), 0o600)
+}
+func writeText(path, value string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	if !strings.HasSuffix(value, "\n") {
+		value += "\n"
+	}
+	return os.WriteFile(path, []byte(value), 0o600)
 }
 func fail(err error) int { fmt.Fprintln(os.Stderr, "epistemic:", err); return 4 }
 func usage()             { fmt.Fprintln(os.Stderr, "usage: epistemic <evaluate|version> [options]") }
