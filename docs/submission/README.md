@@ -9,6 +9,7 @@
 - **Demo repository:** https://github.com/OlegGitH/epistemic-engine-demo
 - **Release:** https://github.com/OlegGitH/epistemic-engine/releases/tag/v0.2.1
 - **Live dashboard:** https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_2574df3bf09361265b5fefcf
+- **Live GPT-5.6 PR review:** https://epistemic-dashboard-r7zqwwvzgq-ew.a.run.app/?account=acc_cb17e3c15b4bcb1c1dfc27f3
 - **API health:** https://epistemic-control-plane-r7zqwwvzgq-ew.a.run.app/health
 - **License:** MIT
 - **Supported platforms:** Windows, macOS, and Linux with Docker Desktop; the production package targets Google Cloud Run and Cloud SQL.
@@ -35,7 +36,7 @@ The Food Lens repository provides four intentionally different branch outcomes. 
 - [x] Demo application, full-scope, branch-scenario, and restart-persistence CI green
 - [x] Public Cloud Run dashboard URL
 - [x] Public Cloud Run API health URL with durable PostgreSQL confirmation
-- [ ] Live GPT-5.6 proof artifact captured
+- [x] Live GPT-5.6 proof captured through the private Cloud Run Job and persisted dashboard account
 - [x] Live Codex SDK proof artifact captured
 - [ ] Public YouTube demo shorter than three minutes
 - [ ] Codex `/feedback` session ID
@@ -99,6 +100,7 @@ GPT-5.6 is used at runtime through the Responses API to propose structured claim
 - `devpost-copy.md` — ready-to-paste project description
 - `video-script.md` — timed demo script
 - `live-proof.md` — credential-safe live GPT-5.6 and Codex proof procedure
+- `final-requirements-audit.md` — requirement coverage, execution-path value, scenario branches, gaps, and final owner actions
 - `evidence/codex-proof-summary.json` — live bounded Codex SDK run metadata
 - `evidence/codex-verification.patch` — unapplied, test-only generated patch
 
