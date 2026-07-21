@@ -99,6 +99,7 @@ GPT-5.6 is used at runtime through the Responses API to propose structured claim
 - `assets/food-lens.png` — demo application
 - `devpost-copy.md` — ready-to-paste project description
 - `video-script.md` — timed demo script
+- `demo-media/` — eight verified visual frames plus a timed editing and narration guide
 - `live-proof.md` — credential-safe live GPT-5.6 and Codex proof procedure
 - `final-requirements-audit.md` — requirement coverage, execution-path value, scenario branches, gaps, and final owner actions
 - `evidence/codex-proof-summary.json` — live bounded Codex SDK run metadata
